@@ -245,11 +245,173 @@ p {
   font-variant-numeric: tabular-nums;
 }
 
+/* Daily quests: a row you tap once to tick off for today. */
+.dailies {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.daily {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 12px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.daily:active {
+  filter: brightness(0.96);
+}
+
+.daily:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* The tick box on the left. */
+.daily-box {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--accent);
+  border-radius: 7px;
+  color: #fff;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.daily-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.daily-xp {
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Done for today: filled tick box, quieter text, no longer tappable. */
+.daily-done {
+  background: transparent;
+  cursor: default;
+}
+
+.daily-done .daily-box {
+  background: var(--accent);
+}
+
+.daily-done .daily-name {
+  color: var(--ink-soft);
+  text-decoration: line-through;
+}
+
 .realm-buttons {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin-top: 12px;
+}
+
+/* ---------- Recent activity list ---------- */
+
+/* Each entry borrows its realm's colour for the stripe on the left. */
+.activity-item[data-realm='health'] {
+  --accent: #b5473c;
+}
+.activity-item[data-realm='mind'] {
+  --accent: #3f6ea8;
+}
+.activity-item[data-realm='wealth'] {
+  --accent: #8a6a12;
+}
+.activity-item[data-realm='together'] {
+  --accent: #a8457d;
+}
+.activity-item[data-realm='questAbroad'] {
+  --accent: #2f7d5b;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 10px;
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.activity-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-what {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.activity-meta {
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-remove {
+  flex-shrink: 0;
+  min-width: 92px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.activity-remove:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* After the first tap: red, asking for the second tap. */
+.activity-remove-confirm {
+  border-color: #8f1d1d;
+  background: #8f1d1d;
+  color: #fff;
 }
 
 /* ---------- Camp (settings) and import ---------- */

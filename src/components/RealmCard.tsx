@@ -1,16 +1,26 @@
-// ONE REALM CARD: name, level, XP bar and the two one-tap log buttons.
+// ONE REALM CARD: name, level, XP bar, today's daily quests, and the two
+// one-tap log buttons for anything else.
 
-import { XP_BIG, XP_SMALL } from '../game/rules.ts'
+import { XP_BIG, XP_DAILY, XP_SMALL } from '../game/rules.ts'
 import type { RealmId } from '../game/rules.ts'
 import { levelProgress } from '../game/xp.ts'
+
+// A daily quest as the card needs it: its name and whether it is done today.
+export type DailyStatus = {
+  id: string
+  name: string
+  doneToday: boolean
+}
 
 type Props = {
   realm: { id: RealmId; name: string; covers: string }
   xp: number // total XP in this realm
+  dailies: DailyStatus[]
   onLog: (realm: RealmId, xp: number) => void
+  onDaily: (dailyId: string) => void
 }
 
-export function RealmCard({ realm, xp, onLog }: Props) {
+export function RealmCard({ realm, xp, dailies, onLog, onDaily }: Props) {
   const progress = levelProgress(xp)
   // How full the bar is, as a percentage from 0 to 100.
   const percent = (progress.xpIntoLevel / progress.xpForThisLevel) * 100
@@ -40,6 +50,29 @@ export function RealmCard({ realm, xp, onLog }: Props) {
         {progress.xpIntoLevel} / {progress.xpForThisLevel} XP to level{' '}
         {progress.level + 1}
       </p>
+
+      {/* Today's daily quests: one tap ticks one off until midnight. */}
+      {dailies.length > 0 && (
+        <div className="dailies">
+          {dailies.map((daily) => (
+            <button
+              key={daily.id}
+              type="button"
+              className={daily.doneToday ? 'daily daily-done' : 'daily'}
+              disabled={daily.doneToday}
+              onClick={() => onDaily(daily.id)}
+            >
+              <span className="daily-box" aria-hidden="true">
+                {daily.doneToday ? '✓' : ''}
+              </span>
+              <span className="daily-name">{daily.name}</span>
+              <span className="daily-xp">
+                {daily.doneToday ? 'Done today' : `+${XP_DAILY}`}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="realm-buttons">
         <button

@@ -6,6 +6,9 @@
 export const XP_SMALL = 10 // e.g. a 20-minute read
 export const XP_BIG = 25 // e.g. a full workout
 
+// XP for ticking off a daily quest. Flat for every daily, for now.
+export const XP_DAILY = 10
+
 // Each realm level needs this much MORE XP than the level before it.
 // Level 1 -> 2 costs 100, level 2 -> 3 costs 200, and so on.
 export const XP_STEP_PER_LEVEL = 100
@@ -18,6 +21,25 @@ export const REALMS = [
   { id: 'wealth', name: 'Wealth', covers: 'Simple money habits' },
   { id: 'together', name: 'Together', covers: 'Shared time and travel' },
   { id: 'questAbroad', name: 'Quest Abroad', covers: 'Career and life goals' },
+] as const
+
+// The daily quests every new save starts with: one per realm, taken from the
+// rulebook. They are copied into the save, so each player can change their own
+// list later without touching this file.
+export const DEFAULT_DAILIES = [
+  { id: 'daily-health-1', realm: 'health', name: 'Did a workout today' },
+  { id: 'daily-mind-1', realm: 'mind', name: 'Read for 20 minutes' },
+  { id: 'daily-wealth-1', realm: 'wealth', name: "Logged today's spending" },
+  {
+    id: 'daily-together-1',
+    realm: 'together',
+    name: '30 minutes of phone-free time together',
+  },
+  {
+    id: 'daily-questAbroad-1',
+    realm: 'questAbroad',
+    name: '1 hour of application work',
+  },
 ] as const
 
 // The two players. You pick one the first time you open the app on a phone.

@@ -3,7 +3,13 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { logAction, undoLastAction } from '../src/game/actions.ts'
+import {
+  completeDaily,
+  isDailyDoneToday,
+  logAction,
+  removeLogEntry,
+  undoLastAction,
+} from '../src/game/actions.ts'
 import { newSave } from '../src/storage/save.ts'
 
 const noon = new Date('2026-11-14T12:00:00.000Z')
@@ -35,6 +41,38 @@ test('undo takes back exactly the last action', () => {
   assert.equal(save.realmXp.wealth, 0)
   assert.equal(save.realmXp.health, 25)
   assert.equal(save.log.length, 1)
+})
+
+test('removing an older entry takes back only that entry', () => {
+  let save = newSave('rachit')
+  save = logAction(save, 'health', 25, noon) // position 0
+  save = logAction(save, 'mind', 10, noon) // position 1
+  save = logAction(save, 'health', 10, noon) // position 2
+  save = removeLogEntry(save, 0)
+
+  assert.equal(save.realmXp.health, 10)
+  assert.equal(save.realmXp.mind, 10)
+  assert.deepEqual(
+    save.log.map((entry) => entry.xp),
+    [10, 10],
+  )
+})
+
+test('removing a daily entry makes the daily tickable again', () => {
+  let save = newSave('deepika')
+  save = completeDaily(save, 'daily-mind-1', noon) // position 0
+  save = logAction(save, 'health', 25, noon) // position 1
+  save = removeLogEntry(save, 0)
+
+  assert.equal(isDailyDoneToday(save, 'daily-mind-1', noon), false)
+  assert.equal(save.realmXp.mind, 0)
+  assert.equal(save.realmXp.health, 25)
+})
+
+test('removing an entry that does not exist changes nothing', () => {
+  const save = logAction(newSave('rachit'), 'health', 25, noon)
+  assert.equal(removeLogEntry(save, 5), save)
+  assert.equal(removeLogEntry(save, -1), save)
 })
 
 test('undo with nothing logged changes nothing', () => {

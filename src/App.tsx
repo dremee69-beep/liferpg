@@ -5,8 +5,13 @@ import { useEffect, useState } from 'react'
 import { Camp } from './components/Camp.tsx'
 import { PlayerPicker } from './components/PlayerPicker.tsx'
 import { Village } from './components/Village.tsx'
-import { logAction, undoLastAction } from './game/actions.ts'
-import { REALMS } from './game/rules.ts'
+import {
+  completeDaily,
+  logAction,
+  removeLogEntry,
+  undoLastAction,
+} from './game/actions.ts'
+import { REALMS, XP_DAILY } from './game/rules.ts'
 import type { PlayerId, RealmId } from './game/rules.ts'
 import { levelForXp } from './game/xp.ts'
 import {
@@ -44,6 +49,20 @@ function App() {
     return () => clearTimeout(timer)
   }, [notice])
 
+  // The current time, which decides what counts as "today" for dailies.
+  // It is refreshed every minute and whenever the app comes back to the
+  // front, so dailies open up again after midnight without restarting.
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const refresh = () => setNow(new Date())
+    const timer = setInterval(refresh, 60_000)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [])
+
   // Once there is a save worth protecting, ask the phone to keep our data.
   const hasSave = save !== null
   useEffect(() => {
@@ -60,30 +79,70 @@ function App() {
     commit(newSave(player))
   }
 
-  function handleLog(realmId: RealmId, xp: number) {
-    if (save === null) return
-    const next = logAction(save, realmId, xp, new Date())
-    commit(next)
+  // Shared by every XP-earning tap: save the change, then show a message
+  // (a level-up message if the realm just reached a new level).
+  function commitXpGain(
+    before: SaveData,
+    after: SaveData,
+    realmId: RealmId,
+    text: string,
+  ) {
+    commit(after)
+    setNow(new Date())
 
     const realmName = REALMS.find((realm) => realm.id === realmId)?.name
-    const levelBefore = levelForXp(save.realmXp[realmId])
-    const levelAfter = levelForXp(next.realmXp[realmId])
+    const levelBefore = levelForXp(before.realmXp[realmId])
+    const levelAfter = levelForXp(after.realmXp[realmId])
     const levelUp = levelAfter > levelBefore
 
     setNotice({
       id: Date.now(),
       text: levelUp
         ? `Level up! ${realmName} is now level ${levelAfter}`
-        : `+${xp} XP in ${realmName}`,
+        : text,
       levelUp,
       canUndo: true,
     })
+  }
+
+  // The Small / Big buttons.
+  function handleLog(realmId: RealmId, xp: number) {
+    if (save === null) return
+    const realmName = REALMS.find((realm) => realm.id === realmId)?.name
+    const next = logAction(save, realmId, xp, new Date())
+    commitXpGain(save, next, realmId, `+${xp} XP in ${realmName}`)
+  }
+
+  // Ticking a daily quest.
+  function handleDaily(dailyId: string) {
+    if (save === null) return
+    const daily = save.dailies.find((d) => d.id === dailyId)
+    const next = completeDaily(save, dailyId, new Date())
+    // completeDaily hands back the same save when there was nothing to do
+    // (already done today), so there is nothing to save or announce.
+    if (daily === undefined || next === save) return
+    commitXpGain(save, next, daily.realm, `+${XP_DAILY} XP: ${daily.name}`)
   }
 
   function handleUndo() {
     if (save === null) return
     commit(undoLastAction(save))
     setNotice({ id: Date.now(), text: 'Undone', levelUp: false, canUndo: false })
+  }
+
+  // "Remove" on an entry in the Recent activity list.
+  function handleRemoveEntry(index: number) {
+    if (save === null) return
+    const entry = save.log[index]
+    if (entry === undefined) return
+    commit(removeLogEntry(save, index))
+    setNow(new Date())
+    setNotice({
+      id: Date.now(),
+      text: `Removed, ${entry.xp} XP taken back`,
+      levelUp: false,
+      canUndo: false,
+    })
   }
 
   // A backup file was chosen and confirmed: use it as the save.
@@ -115,7 +174,10 @@ function App() {
       {screen === 'village' ? (
         <Village
           save={save}
+          now={now}
           onLog={handleLog}
+          onDaily={handleDaily}
+          onRemoveEntry={handleRemoveEntry}
           onOpenCamp={() => setScreen('camp')}
         />
       ) : (

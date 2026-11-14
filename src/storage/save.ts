@@ -6,23 +6,36 @@
 // browser keeps for this app, on this device only. It stores text, so we turn
 // the save into text (JSON) when writing and back into data when reading.
 
-import { PLAYERS, REALMS } from '../game/rules.ts'
+import { dayKey } from '../game/dates.ts'
+import { DEFAULT_DAILIES, PLAYERS, REALMS } from '../game/rules.ts'
 import type { PlayerId, RealmId } from '../game/rules.ts'
 import type { RealmXp } from '../game/xp.ts'
 
 // Bump this number whenever the shape of SaveData changes, and add a step to
 // migrate() below so old saves are upgraded instead of lost.
-export const SAVE_VERSION = 1
+//   Version 1: player, realm XP, log.
+//   Version 2: adds the player's list of daily quests.
+export const SAVE_VERSION = 2
 
 // The names (keys) our data is filed under in the browser's notebook.
 const SAVE_KEY = 'liferpg-save'
 const BACKUP_KEY = 'liferpg-save-unreadable-backup'
 
 // One logged action: which realm, how much XP, and when (ISO date text).
+// If the action was ticking off a daily quest, dailyId says which one. That
+// is how the app knows a daily is already done today.
 export type LogEntry = {
   realm: RealmId
   xp: number
   at: string
+  dailyId?: string
+}
+
+// One daily quest: a small repeatable action that can be ticked once a day.
+export type Daily = {
+  id: string
+  realm: RealmId
+  name: string
 }
 
 // Everything we remember about one player on this device.
@@ -31,6 +44,12 @@ export type SaveData = {
   player: PlayerId
   realmXp: RealmXp
   log: LogEntry[]
+  dailies: Daily[]
+}
+
+// A fresh copy of the starting daily quests.
+function defaultDailies(): Daily[] {
+  return DEFAULT_DAILIES.map((daily) => ({ ...daily }))
 }
 
 // The two things we need from the browser's storage. Spelling this out lets
@@ -47,6 +66,7 @@ export function newSave(player: PlayerId): SaveData {
     player,
     realmXp: { health: 0, mind: 0, wealth: 0, together: 0, questAbroad: 0 },
     log: [],
+    dailies: defaultDailies(),
   }
 }
 
@@ -69,11 +89,18 @@ function isPlayerId(value: unknown): value is PlayerId {
 }
 
 // Upgrades an older save to the newest shape, one version at a time.
-// There is only version 1 so far, so there is nothing to upgrade yet.
-// Example for the future:
-//   if (data.version === 1) { data.shields = 1; data.version = 2 }
+// Each step only ADDS what the newer version needs; it never throws away
+// what the player already has.
 function migrate(data: Record<string, unknown>): Record<string, unknown> {
-  return data
+  let upgraded = data
+
+  // Version 1 -> 2: saves had no daily quests yet, so give them the starting
+  // list. XP and the log are left exactly as they were.
+  if (upgraded.version === 1) {
+    upgraded = { ...upgraded, version: 2, dailies: defaultDailies() }
+  }
+
+  return upgraded
 }
 
 // Turns save-file text into SaveData. Returns null if the text is not a save
@@ -114,12 +141,32 @@ export function parseSave(text: string): SaveData | null {
         isXpNumber(entry.xp) &&
         typeof entry.at === 'string'
       ) {
-        log.push({ realm: entry.realm, xp: entry.xp, at: entry.at })
+        const logEntry: LogEntry = {
+          realm: entry.realm,
+          xp: entry.xp,
+          at: entry.at,
+        }
+        if (typeof entry.dailyId === 'string') logEntry.dailyId = entry.dailyId
+        log.push(logEntry)
       }
     }
   }
 
-  return { version: SAVE_VERSION, player: data.player, realmXp, log }
+  // The list of daily quests must be there; keep only entries that look right.
+  if (!Array.isArray(data.dailies)) return null
+  const dailies: Daily[] = []
+  for (const daily of data.dailies) {
+    if (
+      isObject(daily) &&
+      typeof daily.id === 'string' &&
+      isRealmId(daily.realm) &&
+      typeof daily.name === 'string'
+    ) {
+      dailies.push({ id: daily.id, realm: daily.realm, name: daily.name })
+    }
+  }
+
+  return { version: SAVE_VERSION, player: data.player, realmXp, log, dailies }
 }
 
 // Asks the browser to treat our data as important, so it is not cleared when
@@ -144,10 +191,7 @@ export function saveToText(save: SaveData): string {
 // A file name for a backup, e.g. "liferpg-rachit-2026-11-14.txt".
 // The date is the phone's local date, so backups sort nicely by day.
 export function exportFileName(save: SaveData, now: Date): string {
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `liferpg-${save.player}-${year}-${month}-${day}.txt`
+  return `liferpg-${save.player}-${dayKey(now)}.txt`
 }
 
 // Reads the save from this device. Returns null when there is no save yet
