@@ -1,111 +1,313 @@
+/* THE LOOK
+   Plain and warm for now. The cozy pixel style comes in Milestone 4.
+   Colours are named once here (the lines starting with --) and reused below. */
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --page: #f4ecdb; /* parchment background */
+  --card: #fffaf0; /* card background */
+  --ink: #3a2e22; /* main text */
+  --ink-soft: #6f5f4c; /* quieter text */
+  --line: #d8c6a2; /* borders */
+  --track: #eadfc8; /* empty part of the XP bar */
+  --dark: #3a2e22; /* message bar */
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--ink);
+  background: var(--page);
+  color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+* {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  background: var(--page);
+  /* Stops the phone from zooming text on its own. */
+  -webkit-text-size-adjust: 100%;
 }
 
 h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
+h2,
 p {
   margin: 0;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+/* A screen is a single phone-width column, centred on bigger displays. */
+.screen {
+  max-width: 480px;
+  margin: 0 auto;
+  /* env(...) keeps content clear of the notch and home bar on phones. */
+  padding: calc(16px + env(safe-area-inset-top)) 16px
+    calc(96px + env(safe-area-inset-bottom));
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+/* ---------- Buttons ---------- */
+
+.button {
+  /* 52px tall: comfortably bigger than a thumb needs. */
+  min-height: 52px;
+  padding: 0 16px;
+  border: 2px solid var(--accent, var(--ink));
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  /* No grey flash or double-tap zoom when tapping on phones. */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.button:active {
+  transform: translateY(1px);
+  filter: brightness(0.95);
+}
+
+.button:focus-visible,
+.notice-undo:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.button-strong {
+  background: var(--accent, var(--ink));
+  color: #fff;
+}
+
+.button-big {
+  min-height: 64px;
+  font-size: 1.25rem;
+}
+
+.button-xp {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+/* ---------- First launch: player picker ---------- */
+
+.picker {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.picker h1 {
+  font-size: 2.25rem;
+}
+
+.picker-question {
+  font-size: 1.125rem;
+  color: var(--ink-soft);
+}
+
+.picker-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.hint {
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+/* ---------- Village ---------- */
+
+.village {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.village-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 4px 8px;
+}
+
+.village-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.village-header h1 {
+  font-size: 1.75rem;
+}
+
+.player-level {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 14px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.player-level-label {
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+
+.player-level-number {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Realm card ---------- */
+
+/* Each realm sets its own --accent colour; the bar and buttons pick it up. */
+.realm[data-realm='health'] {
+  --accent: #b5473c;
+}
+.realm[data-realm='mind'] {
+  --accent: #3f6ea8;
+}
+.realm[data-realm='wealth'] {
+  --accent: #8a6a12;
+}
+.realm[data-realm='together'] {
+  --accent: #a8457d;
+}
+.realm[data-realm='questAbroad'] {
+  --accent: #2f7d5b;
+}
+
+.realm {
+  padding: 14px;
+  border: 2px solid var(--line);
+  border-left: 6px solid var(--accent);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.realm-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.realm h2 {
+  font-size: 1.1875rem;
+}
+
+.realm-covers {
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+.realm-level {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  height: 12px;
+  margin-top: 12px;
+  border-radius: 999px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 250ms ease-out;
+}
+
+.bar-text {
+  margin-top: 4px;
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.realm-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+/* ---------- Message bar at the bottom ---------- */
+
+.notice {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(448px, calc(100% - 32px));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 6px 6px 6px 16px;
+  border-radius: 14px;
+  background: var(--dark);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgb(58 46 34 / 0.3);
+}
+
+.notice-levelup {
+  background: #8a5a00;
+}
+
+.notice-undo {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 2px solid rgb(255 255 255 / 0.6);
+  border-radius: 10px;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* ---------- Warning when saving fails ---------- */
+
+.warning {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  background: #7a1f1f;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Respect the phone's "reduce motion" setting. */
+@media (prefers-reduced-motion: reduce) {
+  .bar-fill {
+    transition: none;
+  }
+  .button:active {
+    transform: none;
+  }
 }
