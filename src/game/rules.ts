@@ -20,5 +20,14 @@ export const REALMS = [
   { id: 'questAbroad', name: 'Quest Abroad', covers: 'Career and life goals' },
 ] as const
 
+// The two players. You pick one the first time you open the app on a phone.
+export const PLAYERS = [
+  { id: 'rachit', name: 'Rachit' },
+  { id: 'deepika', name: 'Deepika' },
+] as const
+
+// A PlayerId is one of: 'rachit' | 'deepika'
+export type PlayerId = (typeof PLAYERS)[number]['id']
+
 // A RealmId is one of: 'health' | 'mind' | 'wealth' | 'together' | 'questAbroad'
 export type RealmId = (typeof REALMS)[number]['id']
