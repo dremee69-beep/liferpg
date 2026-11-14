@@ -9,7 +9,12 @@ import { logAction, undoLastAction } from './game/actions.ts'
 import { REALMS } from './game/rules.ts'
 import type { PlayerId, RealmId } from './game/rules.ts'
 import { levelForXp } from './game/xp.ts'
-import { loadSave, newSave, writeSave } from './storage/save.ts'
+import {
+  askToKeepData,
+  loadSave,
+  newSave,
+  writeSave,
+} from './storage/save.ts'
 import type { SaveData } from './storage/save.ts'
 
 // The little message that pops up at the bottom after you log something.
@@ -38,6 +43,12 @@ function App() {
     const timer = setTimeout(() => setNotice(null), NOTICE_MS)
     return () => clearTimeout(timer)
   }, [notice])
+
+  // Once there is a save worth protecting, ask the phone to keep our data.
+  const hasSave = save !== null
+  useEffect(() => {
+    if (hasSave) askToKeepData()
+  }, [hasSave])
 
   // Every change goes through here: update the screen AND the device.
   function commit(next: SaveData) {

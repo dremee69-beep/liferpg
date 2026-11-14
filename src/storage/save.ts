@@ -122,6 +122,17 @@ export function parseSave(text: string): SaveData | null {
   return { version: SAVE_VERSION, player: data.player, realmXp, log }
 }
 
+// Asks the browser to treat our data as important, so it is not cleared when
+// the phone runs low on space. The browser may say no; that is fine, the app
+// still works, which is why weekly backups from Camp matter.
+export async function askToKeepData(): Promise<void> {
+  try {
+    await navigator.storage?.persist?.()
+  } catch {
+    // Not supported here: nothing to do.
+  }
+}
+
 // --- export / import --------------------------------------------------------
 
 // The save as neatly laid-out text, ready to put in a backup file.
