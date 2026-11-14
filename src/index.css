@@ -252,6 +252,92 @@ p {
   margin-top: 12px;
 }
 
+/* ---------- Camp (settings) and import ---------- */
+
+.button-wide {
+  width: 100%;
+}
+
+.button-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.button-column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.camp {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.camp-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 4px;
+}
+
+.camp-header h1 {
+  font-size: 1.75rem;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.panel h2 {
+  font-size: 1.1875rem;
+}
+
+.panel-text {
+  font-size: 0.9375rem;
+  color: var(--ink-soft);
+}
+
+.panel-message {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.import-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+
+.import-warning,
+.import-error {
+  font-weight: 600;
+  color: #8f1d1d;
+}
+
+.import-error {
+  margin-top: 8px;
+}
+
+.picker-import {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 2px solid var(--line);
+}
+
 /* ---------- Message bar at the bottom ---------- */
 
 .notice {

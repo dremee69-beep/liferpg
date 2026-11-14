@@ -10,9 +10,10 @@ import { RealmCard } from './RealmCard.tsx'
 type Props = {
   save: SaveData
   onLog: (realm: RealmId, xp: number) => void
+  onOpenCamp: () => void
 }
 
-export function Village({ save, onLog }: Props) {
+export function Village({ save, onLog, onOpenCamp }: Props) {
   // Look up the display name for the saved player id.
   const player = PLAYERS.find((p) => p.id === save.player)
 
@@ -37,6 +38,10 @@ export function Village({ save, onLog }: Props) {
           onLog={onLog}
         />
       ))}
+
+      <button type="button" className="button button-wide" onClick={onOpenCamp}>
+        Camp: back up or restore your save
+      </button>
     </main>
   )
 }

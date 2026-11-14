@@ -122,6 +122,23 @@ export function parseSave(text: string): SaveData | null {
   return { version: SAVE_VERSION, player: data.player, realmXp, log }
 }
 
+// --- export / import --------------------------------------------------------
+
+// The save as neatly laid-out text, ready to put in a backup file.
+// parseSave() above is its opposite: it reads this text back in.
+export function saveToText(save: SaveData): string {
+  return JSON.stringify(save, null, 2)
+}
+
+// A file name for a backup, e.g. "liferpg-rachit-2026-11-14.txt".
+// The date is the phone's local date, so backups sort nicely by day.
+export function exportFileName(save: SaveData, now: Date): string {
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `liferpg-${save.player}-${year}-${month}-${day}.txt`
+}
+
 // Reads the save from this device. Returns null when there is no save yet
 // (first launch) or it cannot be read.
 export function loadSave(store: KeyValueStore = localStorage): SaveData | null {

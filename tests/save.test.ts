@@ -4,11 +4,30 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  exportFileName,
   loadSave,
   newSave,
   parseSave,
+  saveToText,
   writeSave,
 } from '../src/storage/save.ts'
+
+test('an exported save imports back exactly the same', () => {
+  const save = newSave('deepika')
+  save.realmXp.wealth = 310
+  save.log.push({ realm: 'wealth', xp: 10, at: '2026-11-14T08:30:00.000Z' })
+
+  assert.deepEqual(parseSave(saveToText(save)), save)
+})
+
+test('the backup file is named after the player and the date', () => {
+  // Month 10 means November: JavaScript counts months from 0.
+  const date = new Date(2026, 10, 4)
+  assert.equal(
+    exportFileName(newSave('rachit'), date),
+    'liferpg-rachit-2026-11-04.txt',
+  )
+})
 
 // A pretend browser storage, so these tests run without a browser.
 function fakeStore() {

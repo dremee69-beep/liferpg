@@ -2,6 +2,7 @@
 // to show, and writes the save to the device after every change.
 
 import { useEffect, useState } from 'react'
+import { Camp } from './components/Camp.tsx'
 import { PlayerPicker } from './components/PlayerPicker.tsx'
 import { Village } from './components/Village.tsx'
 import { logAction, undoLastAction } from './game/actions.ts'
@@ -28,6 +29,8 @@ function App() {
   const [save, setSave] = useState<SaveData | null>(() => loadSave())
   const [notice, setNotice] = useState<Notice | null>(null)
   const [saveFailed, setSaveFailed] = useState(false)
+  // Which screen is showing once a player exists.
+  const [screen, setScreen] = useState<'village' | 'camp'>('village')
 
   // Hide the message by itself after a few seconds.
   useEffect(() => {
@@ -72,9 +75,21 @@ function App() {
     setNotice({ id: Date.now(), text: 'Undone', levelUp: false, canUndo: false })
   }
 
-  // First launch: ask who is playing.
+  // A backup file was chosen and confirmed: use it as the save.
+  function handleImport(imported: SaveData) {
+    commit(imported)
+    setScreen('village')
+    setNotice({
+      id: Date.now(),
+      text: 'Save imported',
+      levelUp: false,
+      canUndo: false,
+    })
+  }
+
+  // First launch: ask who is playing (or bring in a backup).
   if (save === null) {
-    return <PlayerPicker onPick={handlePick} />
+    return <PlayerPicker onPick={handlePick} onImport={handleImport} />
   }
 
   return (
@@ -86,7 +101,19 @@ function App() {
         </p>
       )}
 
-      <Village save={save} onLog={handleLog} />
+      {screen === 'village' ? (
+        <Village
+          save={save}
+          onLog={handleLog}
+          onOpenCamp={() => setScreen('camp')}
+        />
+      ) : (
+        <Camp
+          save={save}
+          onBack={() => setScreen('village')}
+          onImport={handleImport}
+        />
+      )}
 
       {notice !== null && (
         <div
