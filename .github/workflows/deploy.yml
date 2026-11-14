@@ -1,0 +1,63 @@
+# PUBLISHING RECIPE
+# Every time new snapshots are pushed to the "main" branch, GitHub follows
+# these steps on its own computers: check the code, build the app, and
+# publish it to GitHub Pages. If a check fails, nothing is published.
+
+name: Test and publish
+
+on:
+  push:
+    branches: [main]
+  # Also allows starting it by hand from the "Actions" tab on GitHub.
+  workflow_dispatch:
+
+# What this recipe is allowed to do: read the code and publish to Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# If two pushes arrive close together, finish them one at a time.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Test and build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v7
+
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install the project's packages
+        run: npm ci
+
+      - name: Run the automatic checks
+        run: npm test
+
+      - name: Build the app
+        run: npm run build
+
+      - name: Hand the built app to GitHub Pages
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  publish:
+    name: Publish
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
