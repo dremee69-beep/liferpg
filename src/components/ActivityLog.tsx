@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { dayKey } from '../game/dates.ts'
 import { REALMS } from '../game/rules.ts'
 import type { LogEntry, SaveData } from '../storage/save.ts'
+import { ConfirmButton } from './ConfirmButton.tsx'
 
 type Props = {
   save: SaveData
@@ -36,10 +37,6 @@ function describeTime(entry: LogEntry, now: Date): string {
 
 export function ActivityLog({ save, now, onRemove }: Props) {
   const [shown, setShown] = useState(PAGE_SIZE)
-  // The entry whose Remove button was tapped once and is waiting for a
-  // second tap. Remembered by position + time, so it can never point at a
-  // different entry after the list changes.
-  const [confirming, setConfirming] = useState<string | null>(null)
 
   // Pair every entry with its position, then put the newest first.
   const newestFirst = save.log
@@ -59,37 +56,22 @@ export function ActivityLog({ save, now, onRemove }: Props) {
       ) : (
         <ul className="activity-list">
           {visible.map(({ entry, index }) => {
-            const key = `${index}-${entry.at}`
             const realm = REALMS.find((r) => r.id === entry.realm)
-            const isConfirming = confirming === key
             return (
-              <li key={key} className="activity-item" data-realm={entry.realm}>
+              // The key names this exact entry (position + time), so a
+              // half-confirmed Remove can never jump to a different entry.
+              <li
+                key={`${index}-${entry.at}`}
+                className="activity-item"
+                data-realm={entry.realm}
+              >
                 <div className="activity-text">
                   <span className="activity-what">{describe(entry, save)}</span>
                   <span className="activity-meta">
                     {realm?.name} · +{entry.xp} XP · {describeTime(entry, now)}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  className={
-                    isConfirming
-                      ? 'activity-remove activity-remove-confirm'
-                      : 'activity-remove'
-                  }
-                  onClick={() => {
-                    if (isConfirming) {
-                      setConfirming(null)
-                      onRemove(index)
-                    } else {
-                      setConfirming(key)
-                    }
-                  }}
-                  // Tapping anywhere else cancels the pending removal.
-                  onBlur={() => setConfirming(null)}
-                >
-                  {isConfirming ? 'Tap again' : 'Remove'}
-                </button>
+                <ConfirmButton label="Remove" onConfirm={() => onRemove(index)} />
               </li>
             )
           })}

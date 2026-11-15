@@ -7,7 +7,6 @@ import { ImportSave } from './ImportSave.tsx'
 
 type Props = {
   save: SaveData
-  onBack: () => void
   onImport: (save: SaveData) => void
 }
 
@@ -28,7 +27,7 @@ function canShareFiles(file: File): boolean {
   )
 }
 
-export function Camp({ save, onBack, onImport }: Props) {
+export function Camp({ save, onImport }: Props) {
   const [message, setMessage] = useState<string | null>(null)
   const shareAvailable = canShareFiles(makeBackupFile(save))
 
@@ -60,11 +59,9 @@ export function Camp({ save, onBack, onImport }: Props) {
 
   return (
     <main className="screen camp">
-      <header className="camp-header">
-        <button type="button" className="button" onClick={onBack}>
-          ← Village
-        </button>
+      <header className="screen-header">
         <h1>Camp</h1>
+        <p className="screen-subtitle">Back up and restore your save</p>
       </header>
 
       <section className="panel">

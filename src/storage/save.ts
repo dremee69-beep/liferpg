@@ -7,7 +7,13 @@
 // the save into text (JSON) when writing and back into data when reading.
 
 import { dayKey } from '../game/dates.ts'
-import { DEFAULT_DAILIES, PLAYERS, REALMS } from '../game/rules.ts'
+import {
+  DEFAULT_DAILIES,
+  isDailyXp,
+  PLAYERS,
+  REALMS,
+  XP_SMALL,
+} from '../game/rules.ts'
 import type { PlayerId, RealmId } from '../game/rules.ts'
 import type { RealmXp } from '../game/xp.ts'
 
@@ -15,7 +21,8 @@ import type { RealmXp } from '../game/xp.ts'
 // migrate() below so old saves are upgraded instead of lost.
 //   Version 1: player, realm XP, log.
 //   Version 2: adds the player's list of daily quests.
-export const SAVE_VERSION = 2
+//   Version 3: each daily quest has its own XP size (10 or 25).
+export const SAVE_VERSION = 3
 
 // The names (keys) our data is filed under in the browser's notebook.
 const SAVE_KEY = 'liferpg-save'
@@ -31,11 +38,13 @@ export type LogEntry = {
   dailyId?: string
 }
 
-// One daily quest: a small repeatable action that can be ticked once a day.
+// One daily quest: a repeatable action that can be ticked once a day.
+// `xp` is what ticking it is worth: 10 (small) or 25 (big).
 export type Daily = {
   id: string
   realm: RealmId
   name: string
+  xp: number
 }
 
 // Everything we remember about one player on this device.
@@ -100,6 +109,18 @@ function migrate(data: Record<string, unknown>): Record<string, unknown> {
     upgraded = { ...upgraded, version: 2, dailies: defaultDailies() }
   }
 
+  // Version 2 -> 3: dailies gained a size. Every daily the player already
+  // has (including ones they added or renamed) becomes a small one, worth
+  // the same 10 XP it was worth before.
+  if (upgraded.version === 2) {
+    const dailies = Array.isArray(upgraded.dailies)
+      ? upgraded.dailies.map((daily: unknown) =>
+          isObject(daily) ? { ...daily, xp: XP_SMALL } : daily,
+        )
+      : upgraded.dailies
+    upgraded = { ...upgraded, version: 3, dailies }
+  }
+
   return upgraded
 }
 
@@ -162,7 +183,14 @@ export function parseSave(text: string): SaveData | null {
       isRealmId(daily.realm) &&
       typeof daily.name === 'string'
     ) {
-      dailies.push({ id: daily.id, realm: daily.realm, name: daily.name })
+      dailies.push({
+        id: daily.id,
+        realm: daily.realm,
+        name: daily.name,
+        // A size we do not recognise falls back to small, so a daily is
+        // never thrown away over it.
+        xp: isDailyXp(daily.xp) ? daily.xp : XP_SMALL,
+      })
     }
   }
 

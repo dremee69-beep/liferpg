@@ -30,6 +30,7 @@ body {
 
 h1,
 h2,
+h3,
 p {
   margin: 0;
 }
@@ -39,8 +40,9 @@ p {
   max-width: 480px;
   margin: 0 auto;
   /* env(...) keeps content clear of the notch and home bar on phones. */
+  /* The bottom gap leaves room for the tab bar and the message bar. */
   padding: calc(16px + env(safe-area-inset-top)) 16px
-    calc(96px + env(safe-area-inset-bottom));
+    calc(160px + env(safe-area-inset-bottom));
 }
 
 /* ---------- Buttons ---------- */
@@ -172,20 +174,21 @@ p {
 
 /* ---------- Realm card ---------- */
 
-/* Each realm sets its own --accent colour; the bar and buttons pick it up. */
-.realm[data-realm='health'] {
+/* Anything marked with data-realm gets that realm's --accent colour; bars,
+   buttons, tick boxes and stripes inside it pick the colour up. */
+[data-realm='health'] {
   --accent: #b5473c;
 }
-.realm[data-realm='mind'] {
+[data-realm='mind'] {
   --accent: #3f6ea8;
 }
-.realm[data-realm='wealth'] {
+[data-realm='wealth'] {
   --accent: #8a6a12;
 }
-.realm[data-realm='together'] {
+[data-realm='together'] {
   --accent: #a8457d;
 }
-.realm[data-realm='questAbroad'] {
+[data-realm='questAbroad'] {
   --accent: #2f7d5b;
 }
 
@@ -331,23 +334,6 @@ p {
 
 /* ---------- Recent activity list ---------- */
 
-/* Each entry borrows its realm's colour for the stripe on the left. */
-.activity-item[data-realm='health'] {
-  --accent: #b5473c;
-}
-.activity-item[data-realm='mind'] {
-  --accent: #3f6ea8;
-}
-.activity-item[data-realm='wealth'] {
-  --accent: #8a6a12;
-}
-.activity-item[data-realm='together'] {
-  --accent: #a8457d;
-}
-.activity-item[data-realm='questAbroad'] {
-  --accent: #2f7d5b;
-}
-
 .activity-list {
   display: flex;
   flex-direction: column;
@@ -385,7 +371,9 @@ p {
   font-variant-numeric: tabular-nums;
 }
 
-.activity-remove {
+/* ---------- Two-tap button (Remove) ---------- */
+
+.confirm-button {
   flex-shrink: 0;
   min-width: 92px;
   min-height: 44px;
@@ -402,16 +390,238 @@ p {
   touch-action: manipulation;
 }
 
-.activity-remove:focus-visible {
+.confirm-button:focus-visible {
   outline: 3px solid var(--ink);
   outline-offset: 2px;
 }
 
+.confirm-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 /* After the first tap: red, asking for the second tap. */
-.activity-remove-confirm {
+.confirm-button-armed {
   border-color: #8f1d1d;
   background: #8f1d1d;
   color: #fff;
+}
+
+/* ---------- Screen headers (Quest log, Camp) ---------- */
+
+.screen-header {
+  padding: 4px 4px 4px;
+}
+
+.screen-header h1 {
+  font-size: 1.75rem;
+}
+
+.screen-subtitle {
+  color: var(--ink-soft);
+}
+
+/* ---------- Quest log ---------- */
+
+.quests {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.panel-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+/* A quiet text button, used for Edit / Done. */
+.link-button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.link-button:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* One realm's group of dailies. */
+.quest-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quest-group-name {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* ---------- Editing dailies ---------- */
+
+.edit-dailies {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* One daily being edited: its name box, then its controls underneath. */
+.edit-daily {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+
+/* The "new daily" box is dashed, to show it is not a daily yet. */
+.edit-daily-new {
+  border-style: dashed;
+  background: transparent;
+}
+
+.edit-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* The Small / Big switch. */
+.size-picker {
+  display: flex;
+  flex: 1;
+  max-width: 220px;
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.size {
+  flex: 1;
+  min-height: 40px;
+  padding: 0 6px;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.size-current {
+  background: var(--accent);
+  color: #fff;
+}
+
+.size:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: -3px;
+}
+
+.edit-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  /* 16px or more stops iPhones from zooming in when you tap the box. */
+  font-size: 1rem;
+}
+
+.edit-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.edit-add {
+  flex-shrink: 0;
+  min-width: 92px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.edit-add:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.edit-add:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* ---------- Tab bar at the bottom ---------- */
+
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  /* Keeps the tabs above the iPhone home bar. */
+  padding-bottom: env(safe-area-inset-bottom);
+  border-top: 2px solid var(--line);
+  background: var(--card);
+}
+
+.tab {
+  flex: 1;
+  max-width: 160px;
+  height: 60px;
+  border: none;
+  border-top: 4px solid transparent;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.tab-current {
+  border-top-color: var(--ink);
+  color: var(--ink);
+}
+
+.tab:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: -3px;
 }
 
 /* ---------- Camp (settings) and import ---------- */
@@ -436,17 +646,6 @@ p {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.camp-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding-bottom: 4px;
-}
-
-.camp-header h1 {
-  font-size: 1.75rem;
 }
 
 .panel {
@@ -505,7 +704,8 @@ p {
 .notice {
   position: fixed;
   left: 50%;
-  bottom: calc(16px + env(safe-area-inset-bottom));
+  /* Sits just above the tab bar (which is 60px tall plus its border). */
+  bottom: calc(74px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   width: min(448px, calc(100% - 32px));
   display: flex;

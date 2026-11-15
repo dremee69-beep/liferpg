@@ -4,7 +4,6 @@
 // copy with the change applied. That keeps React (and undo) simple and safe.
 
 import { dayKey } from './dates.ts'
-import { XP_DAILY } from './rules.ts'
 import type { RealmId } from './rules.ts'
 import type { SaveData } from '../storage/save.ts'
 
@@ -35,7 +34,9 @@ export function isDailyDoneToday(
   )
 }
 
-// Tick off a daily quest: gives its XP and notes it in the log.
+// Tick off a daily quest: gives that daily's own XP (10 or 25) and notes it
+// in the log. The log remembers the amount given, so changing a daily's size
+// later never rewrites what past ticks were worth.
 // Does nothing if the daily does not exist or is already done today.
 export function completeDaily(
   save: SaveData,
@@ -50,11 +51,11 @@ export function completeDaily(
     ...save,
     realmXp: {
       ...save.realmXp,
-      [daily.realm]: save.realmXp[daily.realm] + XP_DAILY,
+      [daily.realm]: save.realmXp[daily.realm] + daily.xp,
     },
     log: [
       ...save.log,
-      { realm: daily.realm, xp: XP_DAILY, at: now.toISOString(), dailyId },
+      { realm: daily.realm, xp: daily.xp, at: now.toISOString(), dailyId },
     ],
   }
 }

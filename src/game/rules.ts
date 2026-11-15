@@ -6,8 +6,24 @@
 export const XP_SMALL = 10 // e.g. a 20-minute read
 export const XP_BIG = 25 // e.g. a full workout
 
-// XP for ticking off a daily quest. Flat for every daily, for now.
-export const XP_DAILY = 10
+// A daily quest is worth one of these two amounts. Each daily has its own
+// size, chosen when it is added or edited. They match the Small and Big
+// buttons, so a demanding daily can pay as much as a big action.
+export const DAILY_XP_CHOICES = [
+  { xp: XP_SMALL, name: 'Small' },
+  { xp: XP_BIG, name: 'Big' },
+] as const
+
+// Is this number one of the allowed daily sizes?
+export function isDailyXp(value: unknown): value is number {
+  return DAILY_XP_CHOICES.some((choice) => choice.xp === value)
+}
+
+// Each realm keeps between 1 and this many daily quests.
+export const MAX_DAILIES_PER_REALM = 3
+
+// The longest name a daily quest can have, in letters.
+export const MAX_DAILY_NAME_LENGTH = 60
 
 // Each realm level needs this much MORE XP than the level before it.
 // Level 1 -> 2 costs 100, level 2 -> 3 costs 200, and so on.
@@ -27,18 +43,35 @@ export const REALMS = [
 // rulebook. They are copied into the save, so each player can change their own
 // list later without touching this file.
 export const DEFAULT_DAILIES = [
-  { id: 'daily-health-1', realm: 'health', name: 'Did a workout today' },
-  { id: 'daily-mind-1', realm: 'mind', name: 'Read for 20 minutes' },
-  { id: 'daily-wealth-1', realm: 'wealth', name: "Logged today's spending" },
+  {
+    id: 'daily-health-1',
+    realm: 'health',
+    name: 'Did a workout today',
+    xp: XP_SMALL,
+  },
+  {
+    id: 'daily-mind-1',
+    realm: 'mind',
+    name: 'Read for 20 minutes',
+    xp: XP_SMALL,
+  },
+  {
+    id: 'daily-wealth-1',
+    realm: 'wealth',
+    name: "Logged today's spending",
+    xp: XP_SMALL,
+  },
   {
     id: 'daily-together-1',
     realm: 'together',
     name: '30 minutes of phone-free time together',
+    xp: XP_SMALL,
   },
   {
     id: 'daily-questAbroad-1',
     realm: 'questAbroad',
     name: '1 hour of application work',
+    xp: XP_SMALL,
   },
 ] as const
 

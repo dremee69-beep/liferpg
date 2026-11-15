@@ -1,7 +1,7 @@
-// THE VILLAGE (home screen): who you are, your player level, and the five
-// realm cards with their log buttons.
+// THE VILLAGE (home screen): who you are, your player level, the five realm
+// cards with their log buttons, and your recent activity.
 
-import { isDailyDoneToday } from '../game/actions.ts'
+import { dailyStatuses } from '../game/dailies.ts'
 import { PLAYERS, REALMS } from '../game/rules.ts'
 import type { RealmId } from '../game/rules.ts'
 import { playerLevel } from '../game/xp.ts'
@@ -15,17 +15,9 @@ type Props = {
   onLog: (realm: RealmId, xp: number) => void
   onDaily: (dailyId: string) => void
   onRemoveEntry: (index: number) => void
-  onOpenCamp: () => void
 }
 
-export function Village({
-  save,
-  now,
-  onLog,
-  onDaily,
-  onRemoveEntry,
-  onOpenCamp,
-}: Props) {
+export function Village({ save, now, onLog, onDaily, onRemoveEntry }: Props) {
   // Look up the display name for the saved player id.
   const player = PLAYERS.find((p) => p.id === save.player)
 
@@ -47,24 +39,13 @@ export function Village({
           key={realm.id}
           realm={realm}
           xp={save.realmXp[realm.id]}
-          // This realm's dailies, each marked done or not done today.
-          dailies={save.dailies
-            .filter((daily) => daily.realm === realm.id)
-            .map((daily) => ({
-              id: daily.id,
-              name: daily.name,
-              doneToday: isDailyDoneToday(save, daily.id, now),
-            }))}
+          dailies={dailyStatuses(save, realm.id, now)}
           onLog={onLog}
           onDaily={onDaily}
         />
       ))}
 
       <ActivityLog save={save} now={now} onRemove={onRemoveEntry} />
-
-      <button type="button" className="button button-wide" onClick={onOpenCamp}>
-        Camp: back up or restore your save
-      </button>
     </main>
   )
 }

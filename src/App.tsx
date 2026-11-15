@@ -4,6 +4,9 @@
 import { useEffect, useState } from 'react'
 import { Camp } from './components/Camp.tsx'
 import { PlayerPicker } from './components/PlayerPicker.tsx'
+import { QuestLog } from './components/QuestLog.tsx'
+import { TabBar } from './components/TabBar.tsx'
+import type { ScreenId } from './components/TabBar.tsx'
 import { Village } from './components/Village.tsx'
 import {
   completeDaily,
@@ -11,7 +14,13 @@ import {
   removeLogEntry,
   undoLastAction,
 } from './game/actions.ts'
-import { REALMS, XP_DAILY } from './game/rules.ts'
+import {
+  addDaily,
+  removeDaily,
+  renameDaily,
+  setDailyXp,
+} from './game/dailies.ts'
+import { REALMS } from './game/rules.ts'
 import type { PlayerId, RealmId } from './game/rules.ts'
 import { levelForXp } from './game/xp.ts'
 import {
@@ -40,7 +49,7 @@ function App() {
   const [notice, setNotice] = useState<Notice | null>(null)
   const [saveFailed, setSaveFailed] = useState(false)
   // Which screen is showing once a player exists.
-  const [screen, setScreen] = useState<'village' | 'camp'>('village')
+  const [screen, setScreen] = useState<ScreenId>('village')
 
   // Hide the message by itself after a few seconds.
   useEffect(() => {
@@ -73,6 +82,19 @@ function App() {
   function commit(next: SaveData) {
     setSave(next)
     setSaveFailed(!writeSave(next))
+  }
+
+  // For edits that may turn out to be "nothing changed" (for example a
+  // rename to the same name): only save when there is something new.
+  function commitIfChanged(next: SaveData) {
+    if (next !== save) commit(next)
+  }
+
+  // Switching tabs: show the new screen from its top.
+  function handleChangeScreen(next: ScreenId) {
+    setScreen(next)
+    setNow(new Date())
+    window.scrollTo(0, 0)
   }
 
   function handlePick(player: PlayerId) {
@@ -121,7 +143,7 @@ function App() {
     // completeDaily hands back the same save when there was nothing to do
     // (already done today), so there is nothing to save or announce.
     if (daily === undefined || next === save) return
-    commitXpGain(save, next, daily.realm, `+${XP_DAILY} XP: ${daily.name}`)
+    commitXpGain(save, next, daily.realm, `+${daily.xp} XP: ${daily.name}`)
   }
 
   function handleUndo() {
@@ -171,22 +193,37 @@ function App() {
         </p>
       )}
 
-      {screen === 'village' ? (
+      {screen === 'village' && (
         <Village
           save={save}
           now={now}
           onLog={handleLog}
           onDaily={handleDaily}
           onRemoveEntry={handleRemoveEntry}
-          onOpenCamp={() => setScreen('camp')}
-        />
-      ) : (
-        <Camp
-          save={save}
-          onBack={() => setScreen('village')}
-          onImport={handleImport}
         />
       )}
+      {screen === 'quests' && (
+        <QuestLog
+          save={save}
+          now={now}
+          onDaily={handleDaily}
+          onAddDaily={(realm, name, xp) =>
+            commitIfChanged(addDaily(save, realm, name, xp, new Date()))
+          }
+          onResizeDaily={(dailyId, xp) =>
+            commitIfChanged(setDailyXp(save, dailyId, xp))
+          }
+          onRenameDaily={(dailyId, name) =>
+            commitIfChanged(renameDaily(save, dailyId, name))
+          }
+          onRemoveDaily={(dailyId) =>
+            commitIfChanged(removeDaily(save, dailyId))
+          }
+        />
+      )}
+      {screen === 'camp' && <Camp save={save} onImport={handleImport} />}
+
+      <TabBar current={screen} onChange={handleChangeScreen} />
 
       {notice !== null && (
         <div

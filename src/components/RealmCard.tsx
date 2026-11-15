@@ -1,16 +1,11 @@
 // ONE REALM CARD: name, level, XP bar, today's daily quests, and the two
 // one-tap log buttons for anything else.
 
-import { XP_BIG, XP_DAILY, XP_SMALL } from '../game/rules.ts'
+import type { DailyStatus } from '../game/dailies.ts'
+import { XP_BIG, XP_SMALL } from '../game/rules.ts'
 import type { RealmId } from '../game/rules.ts'
 import { levelProgress } from '../game/xp.ts'
-
-// A daily quest as the card needs it: its name and whether it is done today.
-export type DailyStatus = {
-  id: string
-  name: string
-  doneToday: boolean
-}
+import { DailyRow } from './DailyRow.tsx'
 
 type Props = {
   realm: { id: RealmId; name: string; covers: string }
@@ -55,21 +50,7 @@ export function RealmCard({ realm, xp, dailies, onLog, onDaily }: Props) {
       {dailies.length > 0 && (
         <div className="dailies">
           {dailies.map((daily) => (
-            <button
-              key={daily.id}
-              type="button"
-              className={daily.doneToday ? 'daily daily-done' : 'daily'}
-              disabled={daily.doneToday}
-              onClick={() => onDaily(daily.id)}
-            >
-              <span className="daily-box" aria-hidden="true">
-                {daily.doneToday ? '✓' : ''}
-              </span>
-              <span className="daily-name">{daily.name}</span>
-              <span className="daily-xp">
-                {daily.doneToday ? 'Done today' : `+${XP_DAILY}`}
-              </span>
-            </button>
+            <DailyRow key={daily.id} daily={daily} onTick={onDaily} />
           ))}
         </div>
       )}
