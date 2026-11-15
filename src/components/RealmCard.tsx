@@ -1,11 +1,13 @@
-// ONE REALM CARD: name, level, XP bar, today's daily quests, and the two
-// one-tap log buttons for anything else.
+// ONE REALM CARD: icon, name, level, XP bar, today's daily quests, and the
+// two one-tap log buttons for anything else.
 
 import type { DailyStatus } from '../game/dailies.ts'
 import { XP_BIG, XP_SMALL } from '../game/rules.ts'
 import type { RealmId } from '../game/rules.ts'
 import { levelProgress } from '../game/xp.ts'
 import { DailyRow } from './DailyRow.tsx'
+import { PixelIcon } from './PixelIcon.tsx'
+import { useXpPops } from './XpPops.tsx'
 
 type Props = {
   realm: { id: RealmId; name: string; covers: string }
@@ -13,6 +15,35 @@ type Props = {
   dailies: DailyStatus[]
   onLog: (realm: RealmId, xp: number) => void
   onDaily: (dailyId: string) => void
+}
+
+// One of the two log buttons. It is its own little piece so that each button
+// can float its own "+10" / "+25" when tapped.
+function LogButton({
+  label,
+  xp,
+  strong,
+  onLog,
+}: {
+  label: string
+  xp: number
+  strong: boolean
+  onLog: () => void
+}) {
+  const pops = useXpPops()
+  return (
+    <button
+      type="button"
+      className={strong ? 'button button-strong' : 'button'}
+      onClick={() => {
+        pops.fire(`+${xp}`)
+        onLog()
+      }}
+    >
+      {label} <span className="button-xp">+{xp}</span>
+      {pops.element}
+    </button>
+  )
 }
 
 export function RealmCard({ realm, xp, dailies, onLog, onDaily }: Props) {
@@ -24,9 +55,12 @@ export function RealmCard({ realm, xp, dailies, onLog, onDaily }: Props) {
     // data-realm lets the CSS give each realm its own colour.
     <section className="realm" data-realm={realm.id}>
       <div className="realm-top">
-        <div>
-          <h2>{realm.name}</h2>
-          <p className="realm-covers">{realm.covers}</p>
+        <div className="realm-title">
+          <PixelIcon name={realm.id} size={36} />
+          <div>
+            <h2>{realm.name}</h2>
+            <p className="realm-covers">{realm.covers}</p>
+          </div>
         </div>
         <div className="realm-level">Lv {progress.level}</div>
       </div>
@@ -56,20 +90,18 @@ export function RealmCard({ realm, xp, dailies, onLog, onDaily }: Props) {
       )}
 
       <div className="realm-buttons">
-        <button
-          type="button"
-          className="button"
-          onClick={() => onLog(realm.id, XP_SMALL)}
-        >
-          Small <span className="button-xp">+{XP_SMALL}</span>
-        </button>
-        <button
-          type="button"
-          className="button button-strong"
-          onClick={() => onLog(realm.id, XP_BIG)}
-        >
-          Big <span className="button-xp">+{XP_BIG}</span>
-        </button>
+        <LogButton
+          label="Small"
+          xp={XP_SMALL}
+          strong={false}
+          onLog={() => onLog(realm.id, XP_SMALL)}
+        />
+        <LogButton
+          label="Big"
+          xp={XP_BIG}
+          strong
+          onLog={() => onLog(realm.id, XP_BIG)}
+        />
       </div>
     </section>
   )

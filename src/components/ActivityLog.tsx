@@ -6,6 +6,7 @@ import { dayKey } from '../game/dates.ts'
 import { REALMS } from '../game/rules.ts'
 import type { LogEntry, SaveData } from '../storage/save.ts'
 import { ConfirmButton } from './ConfirmButton.tsx'
+import { PixelIcon } from './PixelIcon.tsx'
 
 type Props = {
   save: SaveData
@@ -65,6 +66,7 @@ export function ActivityLog({ save, now, onRemove }: Props) {
                 className="activity-item"
                 data-realm={entry.realm}
               >
+                <PixelIcon name={entry.realm} size={24} />
                 <div className="activity-text">
                   <span className="activity-what">{describe(entry, save)}</span>
                   <span className="activity-meta">

@@ -8,6 +8,7 @@ import type { RealmId } from '../game/rules.ts'
 import type { SaveData } from '../storage/save.ts'
 import { DailyRow } from './DailyRow.tsx'
 import { EditDailies } from './EditDailies.tsx'
+import { PixelIcon } from './PixelIcon.tsx'
 
 type Props = {
   save: SaveData
@@ -73,7 +74,10 @@ export function QuestLog({
         ) : (
           groups.map(({ realm, dailies }) => (
             <div key={realm.id} className="quest-group" data-realm={realm.id}>
-              <h3 className="quest-group-name">{realm.name}</h3>
+              <h3 className="quest-group-name">
+                <PixelIcon name={realm.id} size={24} />
+                {realm.name}
+              </h3>
               {dailies.map((daily) => (
                 <DailyRow key={daily.id} daily={daily} onTick={onDaily} />
               ))}

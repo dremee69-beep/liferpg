@@ -13,6 +13,7 @@ import {
 import type { RealmId } from '../game/rules.ts'
 import type { SaveData } from '../storage/save.ts'
 import { ConfirmButton } from './ConfirmButton.tsx'
+import { PixelIcon } from './PixelIcon.tsx'
 
 type Props = {
   save: SaveData
@@ -109,7 +110,10 @@ export function EditDailies({
         const dailies = save.dailies.filter((d) => d.realm === realm.id)
         return (
           <div key={realm.id} className="quest-group" data-realm={realm.id}>
-            <h3 className="quest-group-name">{realm.name}</h3>
+            <h3 className="quest-group-name">
+              <PixelIcon name={realm.id} size={24} />
+              {realm.name}
+            </h3>
 
             {dailies.map((daily) => (
               // The key includes the name, so after a rename the box is

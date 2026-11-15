@@ -1,4 +1,4 @@
-// DRAWS THE APP ICONS
+// DRAWS THE APP ICONS (the ones on the phone's home screen)
 // Run with:  npm run icons
 //
 // The icon is original pixel art described right here as a 16 x 16 grid of
@@ -6,7 +6,7 @@
 // image files into the public folder. No drawing program or download needed.
 
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { crc32, deflateSync } from 'node:zlib'
+import { makePng } from './png.mjs'
 
 // Each letter is one colour (red, green, blue from 0 to 255).
 const COLOURS = {
@@ -39,52 +39,15 @@ const ART = [
   '................',
 ]
 
-// --- PNG file writing (the fiddly part; no need to change it) ---------------
-
-// A PNG file is made of labelled "chunks". This builds one chunk.
-function chunk(type, data) {
-  const length = Buffer.alloc(4)
-  length.writeUInt32BE(data.length)
-  const body = Buffer.concat([Buffer.from(type, 'ascii'), data])
-  const check = Buffer.alloc(4)
-  check.writeUInt32BE(crc32(body))
-  return Buffer.concat([length, body, check])
-}
-
-// Builds a square PNG of the given size from the ART grid.
-function makePng(size) {
+// Builds a square image of the given size from the ART grid.
+function makeIcon(size) {
   const grid = ART.length
-  // Each row of the image is: one "filter" byte (0), then 3 bytes per pixel.
-  const rowBytes = 1 + size * 3
-  const pixels = Buffer.alloc(rowBytes * size)
-
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      // Which art cell does this pixel fall in? (This is the "blow up" step.)
-      const letter = ART[Math.floor((y * grid) / size)][Math.floor((x * grid) / size)]
-      const [r, g, b] = COLOURS[letter]
-      const at = y * rowBytes + 1 + x * 3
-      pixels[at] = r
-      pixels[at + 1] = g
-      pixels[at + 2] = b
-    }
-  }
-
-  const header = Buffer.alloc(13)
-  header.writeUInt32BE(size, 0) // width
-  header.writeUInt32BE(size, 4) // height
-  header[8] = 8 // 8 bits per colour
-  header[9] = 2 // colour type 2 = red, green, blue
-
-  return Buffer.concat([
-    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), // the PNG signature
-    chunk('IHDR', header),
-    chunk('IDAT', deflateSync(pixels)),
-    chunk('IEND', Buffer.alloc(0)),
-  ])
+  return makePng(size, size, (x, y) => {
+    // Which art cell does this pixel fall in? (This is the "blow up" step.)
+    const letter = ART[Math.floor((y * grid) / size)][Math.floor((x * grid) / size)]
+    return COLOURS[letter]
+  })
 }
-
-// --- write the files --------------------------------------------------------
 
 const FILES = [
   ['public/icon-192.png', 192], // Android home screen
@@ -95,6 +58,6 @@ const FILES = [
 
 mkdirSync('public', { recursive: true })
 for (const [path, size] of FILES) {
-  writeFileSync(path, makePng(size))
+  writeFileSync(path, makeIcon(size))
   console.log(`wrote ${path} (${size} x ${size})`)
 }

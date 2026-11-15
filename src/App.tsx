@@ -1,8 +1,9 @@
 // THE APP: the conductor. It holds the save in memory, decides which screen
 // to show, and writes the save to the device after every change.
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Camp } from './components/Camp.tsx'
+import { LevelUpCard } from './components/LevelUpCard.tsx'
 import { PlayerPicker } from './components/PlayerPicker.tsx'
 import { QuestLog } from './components/QuestLog.tsx'
 import { TabBar } from './components/TabBar.tsx'
@@ -22,7 +23,8 @@ import {
 } from './game/dailies.ts'
 import { REALMS } from './game/rules.ts'
 import type { PlayerId, RealmId } from './game/rules.ts'
-import { levelForXp } from './game/xp.ts'
+import { buzz } from './feedback.ts'
+import { levelForXp, playerLevel } from './game/xp.ts'
 import {
   askToKeepData,
   loadSave,
@@ -39,6 +41,13 @@ type Notice = {
   canUndo: boolean
 }
 
+// A realm that has just reached a new level.
+type LevelUp = {
+  id: number // changes every time, so two level-ups in a row both show
+  realm: RealmId
+  level: number
+}
+
 // How long the message stays on screen, in milliseconds.
 const NOTICE_MS = 4000
 
@@ -48,6 +57,11 @@ function App() {
   const [save, setSave] = useState<SaveData | null>(() => loadSave())
   const [notice, setNotice] = useState<Notice | null>(null)
   const [saveFailed, setSaveFailed] = useState(false)
+  // Set when a realm has just levelled up, to show the level-up card.
+  const [levelUp, setLevelUp] = useState<LevelUp | null>(null)
+  // useCallback keeps this the very same function between screen refreshes,
+  // so the card's close-by-itself timer is not restarted by accident.
+  const closeLevelUp = useCallback(() => setLevelUp(null), [])
   // Which screen is showing once a player exists.
   const [screen, setScreen] = useState<ScreenId>('village')
 
@@ -112,19 +126,19 @@ function App() {
     commit(after)
     setNow(new Date())
 
-    const realmName = REALMS.find((realm) => realm.id === realmId)?.name
     const levelBefore = levelForXp(before.realmXp[realmId])
     const levelAfter = levelForXp(after.realmXp[realmId])
-    const levelUp = levelAfter > levelBefore
 
-    setNotice({
-      id: Date.now(),
-      text: levelUp
-        ? `Level up! ${realmName} is now level ${levelAfter}`
-        : text,
-      levelUp,
-      canUndo: true,
-    })
+    if (levelAfter > levelBefore) {
+      // A new level: show the level-up card and give a longer buzz.
+      setLevelUp({ id: Date.now(), realm: realmId, level: levelAfter })
+      buzz('levelUp')
+    } else {
+      buzz('tap')
+    }
+
+    // The message bar always appears, so Undo is there even on a level-up.
+    setNotice({ id: Date.now(), text, levelUp: false, canUndo: true })
   }
 
   // The Small / Big buttons.
@@ -148,6 +162,7 @@ function App() {
 
   function handleUndo() {
     if (save === null) return
+    setLevelUp(null) // if the undone tap caused a level-up, hide its card
     commit(undoLastAction(save))
     setNotice({ id: Date.now(), text: 'Undone', levelUp: false, canUndo: false })
   }
@@ -224,6 +239,16 @@ function App() {
       {screen === 'camp' && <Camp save={save} onImport={handleImport} />}
 
       <TabBar current={screen} onChange={handleChangeScreen} />
+
+      {levelUp !== null && (
+        <LevelUpCard
+          key={levelUp.id}
+          realm={levelUp.realm}
+          level={levelUp.level}
+          playerLevel={playerLevel(save.realmXp)}
+          onClose={closeLevelUp}
+        />
+      )}
 
       {notice !== null && (
         <div

@@ -7,7 +7,8 @@ Nothing from any commercial game is used.
 
 | Asset | Files | Source | License |
 | --- | --- | --- | --- |
-| App icon (pixel village house) | `public/icon-192.png`, `public/icon-512.png`, `public/apple-touch-icon.png` | Original, drawn in code by `scripts/make-icons.mjs` | Made for this project |
+| App icon (pixel village house) | `public/icon-192.png`, `public/icon-512.png`, `public/apple-touch-icon.png`, `public/favicon.png` | Original, drawn in code by `scripts/make-icons.mjs` | Made for this project |
+| In-app pixel icons (heart, book, coin, two hearts, globe, house, scroll, tent) | `src/art/icons.ts` | Original, drawn as letter grids in that file | Made for this project |
 
 ## Fonts
 
