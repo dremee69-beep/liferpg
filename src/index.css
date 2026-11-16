@@ -4,6 +4,18 @@
    Colours and sizes are named once here (the lines starting with --) and
    reused below, so the whole look can be tuned from this one block. */
 
+/* THE FONT: Nunito, a free rounded font (see CREDITS.md). The file travels
+   with the app, so both phones show the same letters, even offline.
+   "100 900" means this one file holds every thickness from thin to black. */
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap; /* show the phone's font until Nunito has loaded */
+  src: url('../node_modules/@fontsource-variable/nunito/files/nunito-latin-wght-normal.woff2')
+    format('woff2');
+}
+
 :root {
   --page: #f3f0e8; /* page background: soft oat */
   --card: #ffffff; /* cards and panels */
@@ -21,10 +33,9 @@
   --shadow-small: 3px 3px 0 var(--ink); /* buttons */
   --round: 18px; /* card corners */
 
-  /* A rounded font where the phone has one (iPhones do); otherwise the
-     phone's normal font. */
+  /* Nunito first; the phone's own font is the fallback while it loads. */
   font-family:
-    ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Nunito', ui-rounded, system-ui, -apple-system, 'Segoe UI', Roboto,
     sans-serif;
   color: var(--ink);
   background: var(--page);
@@ -52,7 +63,7 @@ p {
 h1,
 h2,
 h3 {
-  font-weight: 800;
+  font-weight: 900;
   letter-spacing: -0.01em;
 }
 

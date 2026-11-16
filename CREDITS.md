@@ -7,13 +7,15 @@ Nothing from any commercial game is used.
 
 | Asset | Files | Source | License |
 | --- | --- | --- | --- |
-| App icon (pixel village house) | `public/icon-192.png`, `public/icon-512.png`, `public/apple-touch-icon.png`, `public/favicon.png` | Original, drawn in code by `scripts/make-icons.mjs` | Made for this project |
+| App icon (outlined village house) | `public/icon-192.png`, `public/icon-512.png`, `public/apple-touch-icon.png`, `public/favicon.png` | Original, drawn in code by `scripts/make-icons.mjs` | Made for this project |
 | In-app outline icons (heart, book, coin, two hearts, globe, shield, house, page, tent) | `src/art/line-icons.ts` | Original, drawn as lines in that file | Made for this project |
-| Pixel icons (the house is used for the home-screen app icon) | `src/art/icons.ts` | Original, drawn as letter grids in that file | Made for this project |
+| Pixel icons from the earlier look (no longer shown in the app) | `src/art/icons.ts` | Original, drawn as letter grids in that file | Made for this project |
 
 ## Fonts
 
-None. The app uses the font already on your phone.
+| Asset | Files | Source | License |
+| --- | --- | --- | --- |
+| Nunito (variable, Latin letters) | bundled from the `@fontsource-variable/nunito` npm package | [The Nunito Project Authors](https://github.com/googlefonts/nunito), packaged by [Fontsource](https://fontsource.org) | SIL Open Font License 1.1 |
 
 ## Sound and music
 
