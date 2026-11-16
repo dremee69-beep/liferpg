@@ -1155,6 +1155,33 @@ h3 {
   cursor: crosshair;
 }
 
+/* Town names. They never catch a tap, so tapping on a name still reaches
+   the map underneath. */
+.map-towns {
+  pointer-events: none;
+}
+
+.map-town-dot {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 5;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* The name has a soft white edge drawn behind the letters ("paint-order"),
+   so it stays readable over any terrain colour or border line. */
+.map-town-name {
+  font-weight: 800;
+  fill: var(--ink);
+  stroke: rgb(255 255 255 / 0.85);
+  stroke-linejoin: round;
+  paint-order: stroke;
+  /* x and y give the middle of the name. */
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
 /* A pin: a coloured dot with a dark edge. Both are "lines" of no length
    with thick round ends, so they stay the same size at every zoom. */
 .map-pin-edge,

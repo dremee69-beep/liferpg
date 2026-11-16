@@ -5,10 +5,13 @@
 //     the map has zoomed in close, one on the exact spot. The app works out
 //     the state, the height and the terrain type from that spot.
 //
+// Town names are drawn on the map to help find a place. How many show
+// depends on how far the map is zoomed in (see src/game/towns.ts).
+//
 // The map is an SVG: a picture made of shapes. Its "viewBox" says which part
 // of the map's grid is on screen, so zooming is just changing the viewBox.
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { MouseEvent } from 'react'
 import { dateFromDayKey, dayKey } from '../game/dates.ts'
 import {
@@ -24,9 +27,12 @@ import type { GridPoint, PlaceState, TerrainId } from '../game/geo.ts'
 import { canAddPin, pinsNewestFirst } from '../game/pins.ts'
 import type { PinInput } from '../game/pins.ts'
 import { MAX_PIN_NAME_LENGTH } from '../game/rules.ts'
+import { townLabelSize, townLabelsFor } from '../game/towns.ts'
+import type { MapView } from '../game/towns.ts'
 import { loadHeights } from '../map/heights.ts'
 import type { Heights } from '../map/heights.ts'
 import { INDIA_MAP } from '../map/india.ts'
+import { INDIA_TOWNS } from '../map/towns.ts'
 import type { Pin, SaveData } from '../storage/save.ts'
 import { ConfirmButton } from './ConfirmButton.tsx'
 
@@ -57,13 +63,13 @@ const PLACING_WIDTH = 60
 const SHOWING_WIDTH = 200
 
 // A view of the given width centred on a point, in the map's own shape.
-function viewAround([x, y]: GridPoint, width: number): string {
+function viewAround([x, y]: GridPoint, width: number): MapView {
   const height = width / MAP_SHAPE
-  return `${x - width / 2} ${y - height / 2} ${width} ${height}`
+  return { left: x - width / 2, top: y - height / 2, width, height }
 }
 
 // The part of the map to show for one state: its box plus a margin.
-function viewForState(box: readonly [number, number, number, number]): string {
+function viewForState(box: readonly [number, number, number, number]): MapView {
   const [left, top, width, height] = box
   let viewWidth = Math.max(width * (1 + ZOOM_MARGIN * 2), SMALLEST_VIEW)
   const viewHeight = Math.max(height * (1 + ZOOM_MARGIN * 2), SMALLEST_VIEW / MAP_SHAPE)
@@ -72,7 +78,12 @@ function viewForState(box: readonly [number, number, number, number]): string {
   return viewAround([left + width / 2, top + height / 2], viewWidth)
 }
 
-const WHOLE_MAP = `0 0 ${INDIA_MAP.width} ${INDIA_MAP.height}`
+const WHOLE_MAP: MapView = {
+  left: 0,
+  top: 0,
+  width: INDIA_MAP.width,
+  height: INDIA_MAP.height,
+}
 
 // Where a tap landed, on the map's grid. The browser knows how the SVG's
 // grid is stretched onto the screen; we ask it to run that backwards.
@@ -137,11 +148,27 @@ export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Pro
   const pins = pinsNewestFirst(save)
   const today = dayKey(now)
 
-  const viewBox = closeUp
+  // The part of the map on screen.
+  const view = closeUp
     ? viewAround(closeUp.centre, closeUp.width)
     : selected
       ? viewForState(selected.box)
       : WHOLE_MAP
+  const viewBox = `${view.left} ${view.top} ${view.width} ${view.height}`
+
+  // The town names that fit on this view. Worked out again only when the
+  // view changes ("useMemo" remembers the answer in between).
+  const townLabels = useMemo(
+    () =>
+      townLabelsFor(INDIA_TOWNS, {
+        left: view.left,
+        top: view.top,
+        width: view.width,
+        height: view.height,
+      }),
+    [view.left, view.top, view.width, view.height],
+  )
+  const townSize = townLabelSize(view)
 
   // Back to plain looking: no pin being added, nothing being edited.
   function stopAdding() {
@@ -329,6 +356,24 @@ export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Pro
 
           {/* India's outline, on top of the states. */}
           <path d={INDIA_MAP.outline} className="map-outline" />
+
+          {/* The town names: a small dot with the name beside it. They are
+              sized from the view, so they look the same at every zoom. */}
+          <g className="map-towns" fontSize={townSize}>
+            {townLabels.map((town) => (
+              <g key={`${town.name} ${town.x} ${town.y}`}>
+                <path d={`M${town.x} ${town.y}h0.01`} className="map-town-dot" />
+                <text
+                  className="map-town-name"
+                  x={town.textX}
+                  y={town.textY}
+                  strokeWidth={townSize * 0.28}
+                >
+                  {town.name}
+                </text>
+              </g>
+            ))}
+          </g>
 
           {/* The pins. Each is a "line" of no length with a thick round
               end, which the browser draws as a dot that stays the same size
@@ -585,7 +630,8 @@ export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Pro
         </ul>
         <p className="challenge-hint">
           Heights are approximate: one reading about every 2.4 km. Map shapes:
-          Natural Earth. Heights: US Geological Survey and NOAA.
+          Natural Earth. Heights: US Geological Survey and NOAA. Town names:
+          GeoNames (CC BY 4.0).
         </p>
       </section>
     </main>

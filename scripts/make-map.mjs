@@ -2,13 +2,15 @@
 // Run with:  npm run map
 //
 // It reads the raw downloads in the map-data folder (see CREDITS.md for
-// where they come from) and writes two small files the app uses:
+// where they come from) and writes the small files the app uses:
 //
 //   public/map/india-relief.png  the terrain picture: colour by height,
 //                                with soft shading on the slopes
 //   src/map/india.ts             the outline of India and of each state
 //   public/map/india-heights.png the height of the land, hidden in a picture,
 //                                so the app can tell how high a pin is
+//   src/map/towns.ts             the names and positions of India's towns,
+//                                for the labels on the map
 //
 // The raw downloads are large and are NOT kept in the project's history.
 // To rebuild from scratch, fetch them again (the list is in CREDITS.md).
@@ -480,6 +482,103 @@ export const INDIA_MAP: {
 `
 mkdirSync('src/map', { recursive: true })
 writeFileSync('src/map/india.ts', source)
+
+// ---------------------------------------------------------------------------
+// Writing the towns
+// ---------------------------------------------------------------------------
+
+// The town names come from GeoNames' "cities1000" list: every place in the
+// world with at least 1,000 people. Each line is one place, with its details
+// separated by tabs. The ones used here, counting from 0:
+//   2 = name in plain letters    4 = latitude     5 = longitude
+//   7 = kind of place            8 = country      14 = population
+const CAPITAL_KINDS = ['PPLC', 'PPLA'] // the national and the state capitals
+const SUBURB_KIND = 'PPLX' // a part of a bigger city: left out
+
+// A few names the list spells the old way; these are how they are written now.
+const NEW_SPELLINGS = {
+  Darjiling: 'Darjeeling',
+  'Naini Tal': 'Nainital',
+  Panjim: 'Panaji',
+  Kulu: 'Kullu',
+  Abu: 'Mount Abu',
+  'Dam Dam': 'Dum Dum',
+  Sholapur: 'Solapur',
+  'Tawang Town': 'Tawang',
+  'Khajuraho Group of Monuments': 'Khajuraho',
+}
+
+// The list is put together by volunteers and has some mistakes. These towns
+// are listed with the population of their whole district, which would put
+// them on the map ahead of real cities; these are closer to the truth.
+const POPULATION_FIXES = {
+  Kallakurichi: 52000,
+  Nowrangapur: 30000,
+  Bilimora: 53000,
+  Punasa: 12000,
+  Mulugu: 12000,
+}
+// And these two are not towns at all (a village and a district-sized area
+// listed with city-sized populations).
+const NOT_TOWNS = ['Rasapudipalem', 'Kanayannur']
+// Names with numbers or punctuation are survey labels ("7LC"), not towns.
+const PLAIN_NAME = /^[A-Za-z][A-Za-z .'-]*$/
+
+const towns = readFileSync(`${DATA}/geonames/cities1000.txt`, 'utf8')
+  .split('\n')
+  .map((line) => line.split('\t'))
+  .filter((parts) => parts[8] === 'IN' && parts[7] !== SUBURB_KIND)
+  .filter((parts) => PLAIN_NAME.test(parts[2]) && !NOT_TOWNS.includes(parts[2]))
+  .map((parts) => {
+    const [x, y] = project([Number(parts[5]), Number(parts[4])])
+    const population = POPULATION_FIXES[parts[2]] ?? Number(parts[14])
+    return {
+      name: NEW_SPELLINGS[parts[2]] ?? parts[2],
+      x: Math.round(x * 10) / 10,
+      y: Math.round(y * 10) / 10,
+      // How much a town matters when two labels want the same space: its
+      // population, with capitals counted as three times bigger so that a
+      // small state capital still beats a larger town next door.
+      weight: population * (CAPITAL_KINDS.includes(parts[7]) ? 3 : 1),
+    }
+  })
+  .filter((town) => town.x >= 0 && town.y >= 0 && town.x <= WIDTH && town.y <= HEIGHT)
+  // Most important first; the app relies on this order.
+  .sort((a, b) => b.weight - a.weight || a.name.localeCompare(b.name))
+
+// The list has a few places twice. Drop a town when a more important one
+// with the same name is within about 25 km (10 grid units).
+const keptByName = new Map()
+const keptTowns = towns.filter((town) => {
+  const sameName = keptByName.get(town.name) ?? []
+  if (sameName.some((other) => Math.hypot(other.x - town.x, other.y - town.y) < 10)) {
+    return false
+  }
+  keptByName.set(town.name, [...sameName, town])
+  return true
+})
+
+const townsSource = `// THE TOWNS OF INDIA: names and positions, for the labels on the map.
+// MADE BY A SCRIPT - do not edit by hand. To change it, edit
+// scripts/make-map.mjs and run:  npm run map
+//
+// The names come from GeoNames (geonames.org), licensed CC BY 4.0. See
+// CREDITS.md.
+//
+// Each town is [name, x, y], with x and y on the map's own grid (the same
+// grid as src/map/india.ts). The list runs from the most important town to
+// the least: biggest first, with capitals ahead of other towns.
+
+export type Town = readonly [name: string, x: number, y: number]
+
+export const INDIA_TOWNS: readonly Town[] = [
+${keptTowns.map((town) => JSON.stringify([town.name, town.x, town.y])).join(',\n')},
+]
+`
+writeFileSync('src/map/towns.ts', townsSource)
+console.log(
+  `wrote src/map/towns.ts (${keptTowns.length} towns, ${Math.round(townsSource.length / 1024)} KB)`,
+)
 console.log(
   `wrote src/map/india.ts (${out.states.length} states, ${Math.round(source.length / 1024)} KB)`,
 )

@@ -65,6 +65,20 @@ export const MOUNTAIN_METRES = 1500
 export const MAX_PINS = 200
 export const MAX_PIN_NAME_LENGTH = 40
 
+// TOWN LABELS on the map.
+// How tall the letters are, as a share of the map's width on screen
+// (0.032 is about 11 pixels on a phone). Bigger letters = fewer towns fit.
+export const TOWN_LABEL_SIZE = 0.032
+// Only this many of the most important towns on screen are considered.
+// It stops tiny places filling the gaps when the whole country is in view.
+export const TOWN_LABEL_CANDIDATES = 500
+// The rest are measured in letter heights, and are used to work out how
+// much room a label needs so that two labels never overlap:
+export const TOWN_LABEL_LETTER_WIDTH = 0.6 // the width of an average letter
+export const TOWN_LABEL_LINE_HEIGHT = 1.1 // the height of a line of text
+export const TOWN_DOT_GAP = 0.55 // from the middle of the dot to the name
+export const TOWN_DOT_MARGIN = 0.3 // the room kept clear round the dot
+
 // Sensible limits for what can be typed into an epic quest.
 export const MAX_EPICS = 8
 export const MAX_MILESTONES = 15
