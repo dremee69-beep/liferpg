@@ -31,6 +31,14 @@ import {
   setDailyXp,
 } from './game/dailies.ts'
 import {
+  addEpic,
+  completeMilestone,
+  epicView,
+  removeEpic,
+  updateEpic,
+} from './game/epics.ts'
+import {
+  EPIC_MILESTONE_XP,
   MAX_SHIELDS,
   REALMS,
   TIER_REWARD_SKILL_POINTS,
@@ -60,6 +68,13 @@ type CelebrationContent =
   | { kind: 'level'; realm: RealmId; level: number }
   | { kind: 'tier'; done: TierCompletion }
   | { kind: 'shield'; used: ShieldUse }
+  | {
+      kind: 'milestone'
+      realm: RealmId
+      epicName: string
+      milestoneName: string
+      allDone: boolean // true when this was the epic's last milestone
+    }
 // Once queued, each card also gets a number of its own.
 type Celebration = CelebrationContent & { id: number }
 
@@ -223,6 +238,32 @@ function App() {
     commitXpGain(save, next, daily.realm, `+${daily.xp} XP: ${daily.name}`)
   }
 
+  // Ticking an epic quest's milestone (after the confirming second tap).
+  function handleMilestone(epicId: string, milestoneId: string) {
+    if (save === null) return
+    const epic = save.epics.find((e) => e.id === epicId)
+    const milestone = epic?.milestones.find((m) => m.id === milestoneId)
+    const next = completeMilestone(save, epicId, milestoneId, new Date())
+    if (epic === undefined || milestone === undefined || next === save) return
+
+    const after = next.epics.find((e) => e.id === epicId)
+    celebrate([
+      {
+        kind: 'milestone',
+        realm: epic.realm,
+        epicName: epic.name,
+        milestoneName: milestone.name,
+        allDone: after !== undefined && epicView(after).allDone,
+      },
+    ])
+    commitXpGain(
+      save,
+      next,
+      epic.realm,
+      `+${EPIC_MILESTONE_XP} XP: ${milestone.name}`,
+    )
+  }
+
   function handleUndo() {
     if (save === null) return
     setCelebrations([]) // hide any card the undone tap caused
@@ -318,6 +359,12 @@ function App() {
           onRemoveChallenge={(challengeId) =>
             commitIfChanged(removeChallenge(save, challengeId))
           }
+          onAddEpic={(input) => commitIfChanged(addEpic(save, input, new Date()))}
+          onUpdateEpic={(epicId, changes) =>
+            commitIfChanged(updateEpic(save, epicId, changes))
+          }
+          onRemoveEpic={(epicId) => commitIfChanged(removeEpic(save, epicId))}
+          onMilestone={handleMilestone}
         />
       )}
       {screen === 'camp' && <Camp save={save} onImport={handleImport} />}
@@ -354,6 +401,20 @@ function App() {
           <span className="celebration-chip">
             +{TIER_REWARD_XP} XP · +{TIER_REWARD_SKILL_POINTS} skill point
           </span>
+        </CelebrationCard>
+      )}
+
+      {card !== undefined && card.kind === 'milestone' && (
+        <CelebrationCard
+          key={card.id}
+          realm={card.realm}
+          title={card.allDone ? 'Epic quest complete!' : 'Milestone reached!'}
+          onClose={closeCelebration}
+        >
+          <span className="celebration-line">
+            {card.epicName}: <strong>{card.milestoneName}</strong>
+          </span>
+          <span className="celebration-chip">+{EPIC_MILESTONE_XP} XP</span>
         </CelebrationCard>
       )}
 

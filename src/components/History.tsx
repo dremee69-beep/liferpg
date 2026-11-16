@@ -2,12 +2,13 @@
 // Three views, switched with the buttons at the top:
 //   Days   - each day's actions and XP;
 //   Weeks  - each week's totals, and how every challenge week turned out;
-//   Quests - every challenge tier you have finished.
+//   Quests - every challenge tier and epic quest milestone you have finished.
 
 import { useState } from 'react'
 import { dateFromDayKey, dayKey, weekKey } from '../game/dates.ts'
 import { daysHistory, describeEntry, weeksHistory } from '../game/history.ts'
 import {
+  EPIC_MILESTONE_XP,
   REALMS,
   TIER_REWARD_SKILL_POINTS,
   TIER_REWARD_XP,
@@ -73,8 +74,25 @@ export function History({ save, now, onBack }: Props) {
 
   const days = daysHistory(save)
   const weeks = weeksHistory(save)
-  // Finished tiers, newest first.
-  const tiers = [...save.finishedTiers].reverse()
+  // Finished challenge tiers and epic quest milestones in one list,
+  // newest first.
+  const tiers = [
+    ...save.finishedTiers.map((tier) => ({
+      realm: tier.realm,
+      at: tier.at,
+      what: `${tier.challengeName}: ${tier.tierName}`,
+      kind: 'Challenge tier',
+      reward: `+${TIER_REWARD_XP} XP · +${TIER_REWARD_SKILL_POINTS} pt`,
+    })),
+    ...save.finishedMilestones.map((milestone) => ({
+      realm: milestone.realm,
+      at: milestone.at,
+      what: `${milestone.epicName}: ${milestone.milestoneName}`,
+      kind: 'Epic milestone',
+      reward: `+${EPIC_MILESTONE_XP} XP`,
+    })),
+    // ISO date text sorts correctly as plain text.
+  ].sort((a, b) => (a.at < b.at ? 1 : -1))
 
   // How many groups the open view has, for the "Show more" button.
   const total =
@@ -203,11 +221,11 @@ export function History({ save, now, onBack }: Props) {
       {/* ----- Finished quests ----- */}
       {view === 'quests' && (
         <section className="panel">
-          <h2>Finished challenge tiers</h2>
+          <h2>Finished quests</h2>
           {tiers.length === 0 ? (
             <p className="panel-text">
-              None yet. Every challenge tier you finish is listed here, with
-              the day you finished it.
+              None yet. Every challenge tier you finish and every epic quest
+              milestone you tick is listed here, with its date.
             </p>
           ) : (
             <ul className="activity-list">
@@ -219,24 +237,17 @@ export function History({ save, now, onBack }: Props) {
                 >
                   <Icon name={tier.realm} size={24} />
                   <div className="activity-text">
-                    <span className="activity-what">
-                      {tier.challengeName}: {tier.tierName}
-                    </span>
+                    <span className="activity-what">{tier.what}</span>
                     <span className="activity-meta">
-                      {realmName(tier.realm)} ·{' '}
+                      {tier.kind} · {realmName(tier.realm)} ·{' '}
                       {describeDay(dayKey(new Date(tier.at)), now)}
                     </span>
                   </div>
-                  <span className="history-xp">
-                    +{TIER_REWARD_XP} XP · +{TIER_REWARD_SKILL_POINTS} pt
-                  </span>
+                  <span className="history-xp">{tier.reward}</span>
                 </li>
               ))}
             </ul>
           )}
-          <p className="panel-text">
-            Epic quests will be listed here too, once they are built.
-          </p>
         </section>
       )}
 

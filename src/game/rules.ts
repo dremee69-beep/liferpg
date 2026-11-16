@@ -35,6 +35,16 @@ export const TIER_REWARD_SKILL_POINTS = 1
 export const SHIELDS_AT_START = 1 // what a new player begins with
 export const MAX_SHIELDS = 2 // the most a player can hold
 
+// EPIC QUESTS: goals that run for months, broken into milestones. Ticking a
+// milestone pays this much XP in the epic's realm.
+export const EPIC_MILESTONE_XP = 100
+
+// Sensible limits for what can be typed into an epic quest.
+export const MAX_EPICS = 8
+export const MAX_MILESTONES = 15
+export const MAX_EPIC_NAME_LENGTH = 40
+export const MAX_MILESTONE_NAME_LENGTH = 60
+
 // Sensible limits for what can be typed into a challenge.
 export const MAX_CHALLENGES = 12
 export const MAX_TIERS = 10

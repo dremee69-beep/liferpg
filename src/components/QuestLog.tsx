@@ -1,17 +1,21 @@
 // THE QUEST LOG: today's dailies, your challenges, and where you add and
-// edit both. Epic quests will be added here later.
+// edit both, and your epic quests with their milestones.
 
 import { useState } from 'react'
 import { canAddChallenge, challengeView } from '../game/challenges.ts'
 import type { ChallengeInput } from '../game/challenges.ts'
 import { dailyStatuses } from '../game/dailies.ts'
-import { MAX_SHIELDS, REALMS } from '../game/rules.ts'
+import { canAddEpic, epicView } from '../game/epics.ts'
+import type { EpicInput } from '../game/epics.ts'
+import { EPIC_MILESTONE_XP, MAX_SHIELDS, REALMS } from '../game/rules.ts'
 import type { RealmId } from '../game/rules.ts'
 import type { ChallengeTier, SaveData } from '../storage/save.ts'
 import { ChallengeCard } from './ChallengeCard.tsx'
 import { ChallengeForm } from './ChallengeForm.tsx'
 import { DailyRow } from './DailyRow.tsx'
 import { EditDailies } from './EditDailies.tsx'
+import { EpicCard } from './EpicCard.tsx'
+import { EpicForm } from './EpicForm.tsx'
 import { Icon } from './Icon.tsx'
 
 type Props = {
@@ -28,6 +32,13 @@ type Props = {
     changes: { name: string; dailyId: string | null; tiers: ChallengeTier[] },
   ) => void
   onRemoveChallenge: (challengeId: string) => void
+  onAddEpic: (input: EpicInput) => void
+  onUpdateEpic: (
+    epicId: string,
+    changes: { name: string; openMilestones: string[] },
+  ) => void
+  onRemoveEpic: (epicId: string) => void
+  onMilestone: (epicId: string, milestoneId: string) => void
 }
 
 export function QuestLog({
@@ -41,7 +52,14 @@ export function QuestLog({
   onAddChallenge,
   onUpdateChallenge,
   onRemoveChallenge,
+  onAddEpic,
+  onUpdateEpic,
+  onRemoveEpic,
+  onMilestone,
 }: Props) {
+  // Which epic quest form is open: none, the "new" one, or the edit form
+  // for one epic (remembered by its id).
+  const [epicForm, setEpicForm] = useState<'closed' | 'new' | string>('closed')
   const [editingDailies, setEditingDailies] = useState(false)
   // Which challenge form is open: none, the "new challenge" one, or the
   // edit form for one challenge (remembered by its id).
@@ -192,13 +210,62 @@ export function QuestLog({
         )}
       </section>
 
-      {/* ----- Epic quests (not built yet) ----- */}
+      {/* ----- Epic quests ----- */}
       <section className="panel">
         <h2>Epic quests</h2>
-        <p className="panel-text">
-          Coming in a later update: long goals with milestones worth 100 XP
-          each.
-        </p>
+
+        {save.epics.length === 0 && epicForm === 'closed' && (
+          <p className="panel-text">
+            An epic quest is a big goal that takes months, broken into
+            milestones. Tick a milestone when it is really done: each one
+            gives {EPIC_MILESTONE_XP} XP.
+          </p>
+        )}
+
+        {save.epics.map((epic) =>
+          epicForm === epic.id ? (
+            <EpicForm
+              key={epic.id}
+              existing={epic}
+              onCancel={() => setEpicForm('closed')}
+              onSave={(input) => {
+                onUpdateEpic(epic.id, {
+                  name: input.name,
+                  openMilestones: input.milestones,
+                })
+                setEpicForm('closed')
+              }}
+            />
+          ) : (
+            <EpicCard
+              key={epic.id}
+              view={epicView(epic)}
+              onTick={(milestoneId) => onMilestone(epic.id, milestoneId)}
+              onEdit={() => setEpicForm(epic.id)}
+              onRemove={() => onRemoveEpic(epic.id)}
+            />
+          ),
+        )}
+
+        {epicForm === 'new' && (
+          <EpicForm
+            onCancel={() => setEpicForm('closed')}
+            onSave={(input) => {
+              onAddEpic(input)
+              setEpicForm('closed')
+            }}
+          />
+        )}
+
+        {epicForm === 'closed' && canAddEpic(save) && (
+          <button
+            type="button"
+            className="button button-wide"
+            onClick={() => setEpicForm('new')}
+          >
+            + Add an epic quest
+          </button>
+        )}
       </section>
     </main>
   )

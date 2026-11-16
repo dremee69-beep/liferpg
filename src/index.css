@@ -933,6 +933,35 @@ h3 {
   gap: 6px;
 }
 
+/* ---------- Epic quests ---------- */
+
+/* The checklist of milestones inside an epic quest card. */
+.epic-milestones {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* Room for the rows' shadows. */
+  padding: 0 3px 3px 0;
+}
+
+/* After the first tap on a milestone: yellow, asking for the second tap. */
+.milestone-armed {
+  background: var(--sun);
+}
+
+.milestone-armed .daily-xp {
+  color: var(--ink);
+}
+
+/* The big box for typing milestones, one per line. */
+.edit-textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: 12px 14px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
 /* ---------- History ---------- */
 
 .history {

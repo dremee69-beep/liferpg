@@ -4,6 +4,7 @@
 // copy with the change applied. That keeps React (and undo) simple and safe.
 
 import { dayKey } from './dates.ts'
+import { untickMilestone } from './epics.ts'
 import type { RealmId } from './rules.ts'
 import type { SaveData } from '../storage/save.ts'
 
@@ -70,6 +71,10 @@ export function removeLogEntry(save: SaveData, index: number): SaveData {
   // A challenge reward goes with a finished tier, so it cannot be removed
   // on its own.
   if (entry.challengeId !== undefined) return save
+  // Removing a milestone's entry also unticks that milestone.
+  if (entry.milestoneId !== undefined) {
+    save = untickMilestone(save, entry.milestoneId)
+  }
   return {
     ...save,
     realmXp: {

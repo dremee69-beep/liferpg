@@ -27,7 +27,8 @@ import type { RealmXp } from '../game/xp.ts'
 //   Version 4: adds the player's challenges and their skill points.
 //   Version 5: adds shields.
 //   Version 6: adds the history of challenge weeks and finished tiers.
-export const SAVE_VERSION = 6
+//   Version 7: adds epic quests and their finished milestones.
+export const SAVE_VERSION = 7
 
 // The names (keys) our data is filed under in the browser's notebook.
 const SAVE_KEY = 'liferpg-save'
@@ -48,6 +49,35 @@ export type LogEntry = {
   // Set (together with challengeId) on the note left when a shield covered
   // a missed week. It is worth 0 XP; it is only there so you can look back.
   shield?: true
+  // Set on the XP paid for ticking an epic quest's milestone. Removing the
+  // entry (or undoing it) also unticks that milestone.
+  milestoneId?: string
+}
+
+// One milestone of an epic quest. `doneAt` is when it was ticked (ISO date
+// text), or null while it is still to do.
+export type Milestone = {
+  id: string
+  name: string
+  doneAt: string | null
+}
+
+// An epic quest: a long goal in one realm, broken into milestones.
+export type EpicQuest = {
+  id: string
+  realm: RealmId
+  name: string
+  milestones: Milestone[]
+}
+
+// One line of history: a milestone that was ticked. The names are copied
+// in, so the line still reads properly if the epic is renamed or removed.
+export type FinishedMilestone = {
+  milestoneId: string
+  epicName: string
+  milestoneName: string
+  realm: RealmId
+  at: string // when it was ticked (ISO date text)
 }
 
 // One tier of a challenge: "do it `daysPerWeek` days a week, for `weeks` weeks".
@@ -138,6 +168,9 @@ export type SaveData = {
   // reads them to decide anything.
   weekResults: WeekResult[]
   finishedTiers: FinishedTier[]
+  finishedMilestones: FinishedMilestone[]
+  // The player's epic quests.
+  epics: EpicQuest[]
 }
 
 // Every realm at zero: used for fresh XP and fresh skill points.
@@ -171,6 +204,8 @@ export function newSave(player: PlayerId): SaveData {
     shieldsFrom: '',
     weekResults: [],
     finishedTiers: [],
+    finishedMilestones: [],
+    epics: [],
   }
 }
 
@@ -319,7 +354,37 @@ function migrate(data: Record<string, unknown>): Record<string, unknown> {
     upgraded = { ...upgraded, version: 6, weekResults: [], finishedTiers }
   }
 
+  // Version 6 -> 7: epic quests arrive. Nobody has any yet, so both lists
+  // start empty.
+  if (upgraded.version === 6) {
+    upgraded = { ...upgraded, version: 7, epics: [], finishedMilestones: [] }
+  }
+
   return upgraded
+}
+
+// Reads one epic quest from loaded data. Returns null if it is not usable.
+function readEpic(value: unknown): EpicQuest | null {
+  if (!isObject(value)) return null
+  if (typeof value.id !== 'string' || typeof value.name !== 'string') return null
+  if (!isRealmId(value.realm) || !Array.isArray(value.milestones)) return null
+
+  const milestones: Milestone[] = []
+  for (const milestone of value.milestones) {
+    if (
+      !isObject(milestone) ||
+      typeof milestone.id !== 'string' ||
+      typeof milestone.name !== 'string'
+    ) {
+      return null
+    }
+    milestones.push({
+      id: milestone.id,
+      name: milestone.name,
+      doneAt: typeof milestone.doneAt === 'string' ? milestone.doneAt : null,
+    })
+  }
+  return { id: value.id, realm: value.realm, name: value.name, milestones }
 }
 
 // Is this one of the four ways a challenge week can turn out?
@@ -379,6 +444,9 @@ export function parseSave(text: string): SaveData | null {
         if (typeof entry.challengeId === 'string') {
           logEntry.challengeId = entry.challengeId
           if (entry.shield === true) logEntry.shield = true
+        }
+        if (typeof entry.milestoneId === 'string') {
+          logEntry.milestoneId = entry.milestoneId
         }
         log.push(logEntry)
       }
@@ -471,6 +539,36 @@ export function parseSave(text: string): SaveData | null {
     }
   }
 
+  // Epic quests: keep the ones that look right.
+  const epics: EpicQuest[] = []
+  if (Array.isArray(data.epics)) {
+    for (const value of data.epics) {
+      const epic = readEpic(value)
+      if (epic !== null) epics.push(epic)
+    }
+  }
+  const finishedMilestones: FinishedMilestone[] = []
+  if (Array.isArray(data.finishedMilestones)) {
+    for (const value of data.finishedMilestones) {
+      if (
+        isObject(value) &&
+        typeof value.milestoneId === 'string' &&
+        typeof value.epicName === 'string' &&
+        typeof value.milestoneName === 'string' &&
+        isRealmId(value.realm) &&
+        typeof value.at === 'string'
+      ) {
+        finishedMilestones.push({
+          milestoneId: value.milestoneId,
+          epicName: value.epicName,
+          milestoneName: value.milestoneName,
+          realm: value.realm,
+          at: value.at,
+        })
+      }
+    }
+  }
+
   return {
     version: SAVE_VERSION,
     player: data.player,
@@ -487,6 +585,8 @@ export function parseSave(text: string): SaveData | null {
     shieldsFrom: isDayKey(data.shieldsFrom) ? data.shieldsFrom : '',
     weekResults,
     finishedTiers,
+    finishedMilestones,
+    epics,
   }
 }
 

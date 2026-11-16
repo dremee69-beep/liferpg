@@ -17,6 +17,14 @@ export function describeEntry(entry: LogEntry, save: SaveData): string {
     // Bonus XP for finishing a challenge tier.
     return challenge ? `Tier complete: ${challenge.name}` : 'Challenge tier complete'
   }
+  // XP for ticking an epic quest's milestone. The name comes from the
+  // history line, which is kept even if the epic is removed.
+  if (entry.milestoneId !== undefined) {
+    const line = save.finishedMilestones.find(
+      (m) => m.milestoneId === entry.milestoneId,
+    )
+    return line ? `Milestone: ${line.milestoneName}` : 'Epic quest milestone'
+  }
   if (entry.dailyId !== undefined) {
     const daily = save.dailies.find((d) => d.id === entry.dailyId)
     return daily?.name ?? 'Daily quest'
