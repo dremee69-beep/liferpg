@@ -1016,6 +1016,52 @@ h3 {
   gap: 6px;
 }
 
+/* ---------- Party quests ---------- */
+
+/* A titled group inside the party quests panel. */
+.party-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* One logged party quest that is waiting on somebody. */
+.party-waiting {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  padding: 8px 8px 8px 12px;
+  border: 2px dashed var(--ink);
+  border-radius: 14px;
+}
+
+/* One that is waiting for YOU stands out: solid outline, tinted. */
+.party-for-me {
+  border-style: solid;
+  background: color-mix(in srgb, var(--accent) 28%, #fff);
+}
+
+/* Decline and Confirm, side by side; they drop to their own line on a
+   narrow phone. */
+.party-buttons {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* One party quest in the edit list: its name and a Remove button. */
+.party-edit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 6px 6px 12px;
+  border: var(--outline);
+  border-radius: 14px;
+  background: var(--card);
+}
+
 /* ---------- Epic quests ---------- */
 
 /* The checklist of milestones inside an epic quest card. */

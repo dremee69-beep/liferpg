@@ -25,6 +25,11 @@ export function describeEntry(entry: LogEntry, save: SaveData): string {
     )
     return line ? `Milestone: ${line.milestoneName}` : 'Epic quest milestone'
   }
+  // Together XP for a party quest both players agreed on.
+  if (entry.partyId !== undefined) {
+    const party = save.partyLogs.find((log) => log.id === entry.partyId)
+    return party ? `Party quest: ${party.name}` : 'Party quest'
+  }
   if (entry.dailyId !== undefined) {
     const daily = save.dailies.find((d) => d.id === entry.dailyId)
     return daily?.name ?? 'Daily quest'

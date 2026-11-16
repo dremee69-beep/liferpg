@@ -35,7 +35,7 @@ test('a share code is one block of chat-safe letters', () => {
 })
 
 test('reading a code gives back the summary it was made from', () => {
-  assert.deepEqual(readShareCode(deepikaCode()), {
+  assert.deepEqual(readShareCode(deepikaCode())?.summary, {
     player: 'deepika',
     realmXp: { health: 40, mind: 250, wealth: 0, together: 0, questAbroad: 0 },
     shields: 2,
@@ -50,13 +50,14 @@ test('a code holds only the summary, nothing personal', () => {
     { realm: 'mind', name: 'Learn the guitar', milestones: ['Buy a guitar'] },
     nov(9),
   )
-  const summary = readShareCode(makeShareCode(save, nov(16)))
-  assert.deepEqual(Object.keys(summary ?? {}).sort(), ['at', 'player', 'realmXp', 'shields'])
+  const code = readShareCode(makeShareCode(save, nov(16)))
+  assert.deepEqual(Object.keys(code?.summary ?? {}).sort(), ['at', 'player', 'realmXp', 'shields'])
+  assert.deepEqual(code?.party, []) // nothing logged, so no party quests sent
 })
 
 test('a code is found inside a longer chat message', () => {
   const message = `Here is my code for today!\n${deepikaCode()}\nSend me yours :)`
-  assert.equal(readShareCode(message)?.player, 'deepika')
+  assert.equal(readShareCode(message)?.summary.player, 'deepika')
 })
 
 test('text without a code, or with a damaged one, is refused', () => {
@@ -72,7 +73,7 @@ test("pasting a partner's code remembers their summary", () => {
   const mine = newSave('rachit')
   assert.equal(mine.partner, null)
 
-  const result = applyPartnerCode(mine, deepikaCode())
+  const result = applyPartnerCode(mine, deepikaCode(), nov(20))
   assert.equal(result.problem, null)
   assert.equal(result.save.partner?.player, 'deepika')
   assert.equal(result.save.partner?.realmXp.mind, 250)
@@ -82,26 +83,26 @@ test("pasting a partner's code remembers their summary", () => {
 
 test('your own code is refused', () => {
   const mine = newSave('deepika')
-  const result = applyPartnerCode(mine, deepikaCode())
+  const result = applyPartnerCode(mine, deepikaCode(), nov(20))
   assert.equal(result.problem, 'own')
   assert.equal(result.save, mine) // the very same save
 })
 
 test('an unreadable code changes nothing', () => {
   const mine = newSave('rachit')
-  const result = applyPartnerCode(mine, 'LRPG1.oops')
+  const result = applyPartnerCode(mine, 'LRPG1.oops', nov(20))
   assert.equal(result.problem, 'unreadable')
   assert.equal(result.save, mine)
 })
 
 test('a newer code replaces an older one, but not the other way round', () => {
-  let mine = applyPartnerCode(newSave('rachit'), deepikaCode(16)).save
+  let mine = applyPartnerCode(newSave('rachit'), deepikaCode(16), nov(20)).save
 
-  const older = applyPartnerCode(mine, deepikaCode(14))
+  const older = applyPartnerCode(mine, deepikaCode(14), nov(20))
   assert.equal(older.problem, 'older')
   assert.equal(older.save, mine)
 
-  mine = applyPartnerCode(mine, deepikaCode(18)).save
+  mine = applyPartnerCode(mine, deepikaCode(18), nov(20)).save
   assert.equal(mine.partner?.at, nov(18).toISOString())
 })
 
@@ -118,7 +119,7 @@ test('the age of a code is counted in calendar days', () => {
 // ----- saving --------------------------------------------------------------
 
 test('the partner summary survives export and import', () => {
-  const save = applyPartnerCode(newSave('rachit'), deepikaCode()).save
+  const save = applyPartnerCode(newSave('rachit'), deepikaCode(), nov(20)).save
   assert.deepEqual(parseSave(saveToText(save)), save)
 })
 
@@ -134,7 +135,7 @@ test('a version 7 save is upgraded with no partner yet', () => {
 })
 
 test('a damaged partner summary is dropped without losing the save', () => {
-  const save = applyPartnerCode(newSave('rachit'), deepikaCode()).save
+  const save = applyPartnerCode(newSave('rachit'), deepikaCode(), nov(20)).save
   const damaged = JSON.parse(saveToText(logAction(save, 'mind', 25, nov(9))))
   damaged.partner.realmXp = 'nonsense'
 

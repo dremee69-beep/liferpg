@@ -37,11 +37,20 @@ import {
   removeEpic,
   updateEpic,
 } from './game/epics.ts'
+import {
+  addPartyQuest,
+  cancelPartyLog,
+  confirmPartyLog,
+  declinePartyLog,
+  logPartyQuest,
+  removePartyQuest,
+} from './game/party.ts'
 import { applyPartnerCode } from './game/share.ts'
-import type { ShareProblem } from './game/share.ts'
+import type { PartnerCodeResult } from './game/share.ts'
 import {
   EPIC_MILESTONE_XP,
   MAX_SHIELDS,
+  PARTY_QUEST_XP,
   REALMS,
   TIER_REWARD_SKILL_POINTS,
   TIER_REWARD_XP,
@@ -288,13 +297,63 @@ function App() {
     })
   }
 
+  // Saves a change that paid Together XP for party quests, with a card if
+  // the realm just reached a new level. There is no Undo for these: the XP
+  // was agreed by both players.
+  function commitPartyGain(before: SaveData, after: SaveData) {
+    const levelBefore = levelForXp(before.realmXp.together)
+    const levelAfter = levelForXp(after.realmXp.together)
+    if (levelAfter > levelBefore) {
+      celebrate([{ kind: 'level', realm: 'together', level: levelAfter }])
+      buzz('levelUp')
+    } else if (after.realmXp.together > before.realmXp.together) {
+      buzz('tap')
+    }
+    commit(after)
+    setNow(new Date())
+  }
+
   // A partner's share code was pasted in Camp. Tells Camp why it was not
-  // used, or null when it worked.
-  function handlePartnerCode(text: string): ShareProblem | null {
-    if (save === null) return 'unreadable'
-    const result = applyPartnerCode(save, text)
-    if (result.problem === null) commit(result.save)
-    return result.problem
+  // used, or what party quest news the code brought.
+  function handlePartnerCode(text: string): PartnerCodeResult {
+    if (save === null) {
+      return {
+        problem: 'unreadable',
+        news: { toConfirm: [], confirmed: [], declined: [] },
+      }
+    }
+    const result = applyPartnerCode(save, text, new Date())
+    if (result.problem === null) commitPartyGain(save, result.save)
+    return { problem: result.problem, news: result.news }
+  }
+
+  // Confirming a party quest the partner logged: pays the Together XP.
+  function handleConfirmParty(logId: string) {
+    if (save === null) return
+    const log = save.partyLogs.find((l) => l.id === logId)
+    const next = confirmPartyLog(save, logId, new Date())
+    if (log === undefined || next === save) return
+    commitPartyGain(save, next)
+    setNotice({
+      id: Date.now(),
+      text: `+${PARTY_QUEST_XP} Together XP: ${log.name}`,
+      canUndo: false,
+    })
+  }
+
+  // Logging a party quest: it now waits for the partner.
+  function handleLogParty(questId: string) {
+    if (save === null) return
+    const next = logPartyQuest(save, questId, new Date())
+    if (next === save) return
+    commit(next)
+    setNow(new Date())
+    buzz('tap')
+    setNotice({
+      id: Date.now(),
+      text: 'Logged. Send your share code from Camp.',
+      canUndo: false,
+    })
   }
 
   // A backup file was chosen and confirmed: use it as the save.
@@ -376,6 +435,16 @@ function App() {
           }
           onRemoveEpic={(epicId) => commitIfChanged(removeEpic(save, epicId))}
           onMilestone={handleMilestone}
+          onLogParty={handleLogParty}
+          onConfirmParty={handleConfirmParty}
+          onDeclineParty={(logId) => commitIfChanged(declinePartyLog(save, logId))}
+          onCancelParty={(logId) => commitIfChanged(cancelPartyLog(save, logId))}
+          onAddPartyQuest={(name) =>
+            commitIfChanged(addPartyQuest(save, name, new Date()))
+          }
+          onRemovePartyQuest={(questId) =>
+            commitIfChanged(removePartyQuest(save, questId))
+          }
         />
       )}
       {screen === 'camp' && (

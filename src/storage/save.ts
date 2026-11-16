@@ -9,6 +9,7 @@
 import { dayKey, weekKey } from '../game/dates.ts'
 import {
   DEFAULT_DAILIES,
+  DEFAULT_PARTY_QUESTS,
   isDailyXp,
   MAX_SHIELDS,
   PLAYERS,
@@ -31,7 +32,8 @@ import type { RealmXp } from '../game/xp.ts'
 //   Version 6: adds the history of challenge weeks and finished tiers.
 //   Version 7: adds epic quests and their finished milestones.
 //   Version 8: adds what the partner's last share code said.
-export const SAVE_VERSION = 8
+//   Version 9: adds party quests.
+export const SAVE_VERSION = 9
 
 // The names (keys) our data is filed under in the browser's notebook.
 const SAVE_KEY = 'liferpg-save'
@@ -55,6 +57,27 @@ export type LogEntry = {
   // Set on the XP paid for ticking an epic quest's milestone. Removing the
   // entry (or undoing it) also unticks that milestone.
   milestoneId?: string
+  // Set on the Together XP paid for a confirmed party quest. Both players
+  // agreed on it, so the entry cannot be removed by hand.
+  partyId?: string
+}
+
+// One party quest on the player's list: something you do as a pair.
+export type PartyQuest = {
+  id: string
+  name: string
+}
+
+// One time a party quest was logged, by either player.
+//   'pending'   logged, waiting for the other player to confirm;
+//   'confirmed' the other player confirmed it, and the XP was paid here;
+//   'declined'  the other player said no.
+export type PartyLog = {
+  id: string // the same on both phones, so they can match it up
+  name: string // the quest's name, copied in
+  by: PlayerId // who logged it
+  at: string // when it was logged (ISO date text)
+  state: 'pending' | 'confirmed' | 'declined'
 }
 
 // One milestone of an epic quest. `doneAt` is when it was ticked (ISO date
@@ -177,6 +200,15 @@ export type SaveData = {
   // What the partner's most recent share code said, or null if no code has
   // been pasted in yet.
   partner: PartnerSummary | null
+  // The player's list of party quests, and every time one was logged (by
+  // either player), oldest first.
+  partyQuests: PartyQuest[]
+  partyLogs: PartyLog[]
+}
+
+// A fresh copy of the starting party quests.
+function defaultPartyQuests(): PartyQuest[] {
+  return DEFAULT_PARTY_QUESTS.map((quest) => ({ ...quest }))
 }
 
 // Every realm at zero: used for fresh XP and fresh skill points.
@@ -213,6 +245,8 @@ export function newSave(player: PlayerId): SaveData {
     finishedMilestones: [],
     epics: [],
     partner: null,
+    partyQuests: defaultPartyQuests(),
+    partyLogs: [],
   }
 }
 
@@ -372,6 +406,17 @@ function migrate(data: Record<string, unknown>): Record<string, unknown> {
     upgraded = { ...upgraded, version: 8, partner: null }
   }
 
+  // Version 8 -> 9: party quests arrive, with the starting list and
+  // nothing logged yet.
+  if (upgraded.version === 8) {
+    upgraded = {
+      ...upgraded,
+      version: 9,
+      partyQuests: defaultPartyQuests(),
+      partyLogs: [],
+    }
+  }
+
   return upgraded
 }
 
@@ -397,6 +442,34 @@ function readEpic(value: unknown): EpicQuest | null {
     })
   }
   return { id: value.id, realm: value.realm, name: value.name, milestones }
+}
+
+// Reads a list of logged party quests from loaded data (a save, or a share
+// code), keeping only the ones that look right.
+export function readPartyLogs(value: unknown): PartyLog[] {
+  const logs: PartyLog[] = []
+  if (!Array.isArray(value)) return logs
+  for (const item of value) {
+    if (
+      isObject(item) &&
+      typeof item.id === 'string' &&
+      typeof item.name === 'string' &&
+      isPlayerId(item.by) &&
+      typeof item.at === 'string' &&
+      (item.state === 'pending' ||
+        item.state === 'confirmed' ||
+        item.state === 'declined')
+    ) {
+      logs.push({
+        id: item.id,
+        name: item.name,
+        by: item.by,
+        at: item.at,
+        state: item.state,
+      })
+    }
+  }
+  return logs
 }
 
 // Is this one of the four ways a challenge week can turn out?
@@ -460,6 +533,7 @@ export function parseSave(text: string): SaveData | null {
         if (typeof entry.milestoneId === 'string') {
           logEntry.milestoneId = entry.milestoneId
         }
+        if (typeof entry.partyId === 'string') logEntry.partyId = entry.partyId
         log.push(logEntry)
       }
     }
@@ -581,6 +655,21 @@ export function parseSave(text: string): SaveData | null {
     }
   }
 
+  // Party quests: the list, then everything logged.
+  const partyQuests: PartyQuest[] = []
+  if (Array.isArray(data.partyQuests)) {
+    for (const value of data.partyQuests) {
+      if (
+        isObject(value) &&
+        typeof value.id === 'string' &&
+        typeof value.name === 'string'
+      ) {
+        partyQuests.push({ id: value.id, name: value.name })
+      }
+    }
+  }
+  const partyLogs = readPartyLogs(data.partyLogs)
+
   return {
     version: SAVE_VERSION,
     player: data.player,
@@ -602,6 +691,8 @@ export function parseSave(text: string): SaveData | null {
     // A partner summary we cannot read is dropped; pasting a fresh code
     // brings it back.
     partner: readPartnerSummary(data.partner),
+    partyQuests,
+    partyLogs,
   }
 }
 

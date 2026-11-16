@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import { exportFileName, saveToText } from '../storage/save.ts'
 import type { SaveData } from '../storage/save.ts'
-import type { ShareProblem } from '../game/share.ts'
+import type { PartnerCodeResult } from '../game/share.ts'
 import { ImportSave } from './ImportSave.tsx'
 import { SharePanel } from './SharePanel.tsx'
 
@@ -12,7 +12,7 @@ type Props = {
   save: SaveData
   now: Date
   onImport: (save: SaveData) => void
-  onPartnerCode: (text: string) => ShareProblem | null
+  onPartnerCode: (text: string) => PartnerCodeResult
 }
 
 // Builds the backup file in memory. It is a plain text file so that phones

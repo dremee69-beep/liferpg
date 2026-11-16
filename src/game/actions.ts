@@ -71,6 +71,8 @@ export function removeLogEntry(save: SaveData, index: number): SaveData {
   // A challenge reward goes with a finished tier, so it cannot be removed
   // on its own.
   if (entry.challengeId !== undefined) return save
+  // A party quest's XP was agreed by both players, so it stays too.
+  if (entry.partyId !== undefined) return save
   // Removing a milestone's entry also unticks that milestone.
   if (entry.milestoneId !== undefined) {
     save = untickMilestone(save, entry.milestoneId)
@@ -93,7 +95,9 @@ export function removeLogEntry(save: SaveData, index: number): SaveData {
 // it in the log; we skip past rewards and take back the player's own action.
 export function undoLastAction(save: SaveData): SaveData {
   for (let index = save.log.length - 1; index >= 0; index--) {
-    if (save.log[index].challengeId === undefined) {
+    const entry = save.log[index]
+    // Rewards and party quest XP are not the player's own taps: skip them.
+    if (entry.challengeId === undefined && entry.partyId === undefined) {
       return removeLogEntry(save, index)
     }
   }

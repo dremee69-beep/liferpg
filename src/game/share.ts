@@ -4,15 +4,19 @@
 // you send on WhatsApp. Your partner pastes it into their app.
 //
 // A share code holds a small summary only: who you are, your XP in each
-// realm, your shields, and when the code was made. It never holds your
-// dailies, challenges, epic quests or history.
+// realm, your shields, when the code was made, and your latest party quests
+// (so your partner can confirm them). It never holds your dailies,
+// challenges, epic quests or history.
 //
 // Like the other game files, nothing here changes the save it is given.
 
 import { MAX_SHIELDS, PLAYERS, REALMS } from './rules.ts'
 import type { PlayerId } from './rules.ts'
 import type { RealmXp } from './xp.ts'
-import type { SaveData } from '../storage/save.ts'
+import { mergePartyLogs, partyLogsForCode } from './party.ts'
+import type { PartyNews } from './party.ts'
+import { readPartyLogs } from '../storage/save.ts'
+import type { PartyLog, SaveData } from '../storage/save.ts'
 
 // What a share code says about a player.
 export type PartnerSummary = {
@@ -59,7 +63,8 @@ export function makeShareCode(save: SaveData, now: Date): string {
     shields: save.shields,
     at: now.toISOString(),
   }
-  return PREFIX + encode(JSON.stringify(summary))
+  // The latest party quests ride along next to the summary.
+  return PREFIX + encode(JSON.stringify({ ...summary, party: partyLogsForCode(save) }))
 }
 
 // Checks that loaded data really is a partner summary. Returns a clean copy,
@@ -95,13 +100,20 @@ export function readPartnerSummary(value: unknown): PartnerSummary | null {
 // Finds a share code in pasted text and reads it. The text can have other
 // words around the code (for example the rest of a WhatsApp message).
 // Returns null when there is no code, or it is damaged.
-export function readShareCode(text: string): PartnerSummary | null {
+export function readShareCode(
+  text: string,
+): { summary: PartnerSummary; party: PartyLog[] } | null {
   const found = text.match(/LRPG1\.([A-Za-z0-9_-]+)/)
   if (found === null) return null
   const json = decode(found[1])
   if (json === null) return null
   try {
-    return readPartnerSummary(JSON.parse(json))
+    const data: unknown = JSON.parse(json)
+    const summary = readPartnerSummary(data)
+    if (summary === null) return null
+    // A code from before party quests existed simply has none.
+    const party = readPartyLogs((data as { party?: unknown }).party)
+    return { summary, party }
   } catch {
     return null // the code was cut short or changed
   }
@@ -117,20 +129,31 @@ export function readShareCode(text: string): PartnerSummary | null {
 //   'older'      the app already has a newer code from the partner.
 export type ShareProblem = 'unreadable' | 'own' | 'older'
 
-// Remember what a partner's code says. Hands back the new save, or the very
-// same save together with the problem.
+// What the screen is told after a code was pasted: the problem (if it was
+// not used) and the party quest news (if it was).
+export type PartnerCodeResult = { problem: ShareProblem | null; news: PartyNews }
+
+const NO_NEWS: PartyNews = { toConfirm: [], confirmed: [], declined: [] }
+
+// Remember what a partner's code says, and take in its party quests (which
+// may pay XP for ones the partner confirmed). Hands back the new save and
+// the party quest news, or the very same save together with the problem.
 export function applyPartnerCode(
   save: SaveData,
   text: string,
-): { save: SaveData; problem: ShareProblem | null } {
-  const summary = readShareCode(text)
-  if (summary === null) return { save, problem: 'unreadable' }
-  if (summary.player === save.player) return { save, problem: 'own' }
-  // ISO date text sorts correctly as plain text.
-  if (save.partner !== null && summary.at < save.partner.at) {
-    return { save, problem: 'older' }
+  now: Date,
+): { save: SaveData; problem: ShareProblem | null; news: PartyNews } {
+  const code = readShareCode(text)
+  if (code === null) return { save, problem: 'unreadable', news: NO_NEWS }
+  if (code.summary.player === save.player) {
+    return { save, problem: 'own', news: NO_NEWS }
   }
-  return { save: { ...save, partner: summary }, problem: null }
+  // ISO date text sorts correctly as plain text.
+  if (save.partner !== null && code.summary.at < save.partner.at) {
+    return { save, problem: 'older', news: NO_NEWS }
+  }
+  const merged = mergePartyLogs({ ...save, partner: code.summary }, code.party, now)
+  return { save: merged.save, problem: null, news: merged.news }
 }
 
 // How many whole days ago a code was made: 0 for today, 1 for yesterday...

@@ -4,9 +4,9 @@
 // by the app itself.
 
 import { useState } from 'react'
-import { PLAYERS } from '../game/rules.ts'
+import { PARTY_QUEST_XP, PLAYERS } from '../game/rules.ts'
 import { daysSince, makeShareCode } from '../game/share.ts'
-import type { ShareProblem } from '../game/share.ts'
+import type { PartnerCodeResult, ShareProblem } from '../game/share.ts'
 import type { SaveData } from '../storage/save.ts'
 
 type Props = {
@@ -14,7 +14,7 @@ type Props = {
   now: Date
   // Hands the pasted text to the app. Comes back with the reason it was
   // not used, or null when it worked.
-  onPartnerCode: (text: string) => ShareProblem | null
+  onPartnerCode: (text: string) => PartnerCodeResult
 }
 
 // What to tell the player when a pasted code was not used.
@@ -38,8 +38,9 @@ export function SharePanel({ save, now, onPartnerCode }: Props) {
   // A note under the buttons: what just happened, and whether it went well.
   const [note, setNote] = useState<{ text: string; ok: boolean } | null>(null)
 
+  // The other player's name, e.g. "Deepika" on Rachit's phone.
   const partnerName =
-    PLAYERS.find((p) => p.id === save.partner?.player)?.name ?? 'your partner'
+    PLAYERS.find((p) => p.id !== save.player)?.name ?? 'your partner'
   const canShare = typeof navigator.share === 'function'
 
   // Send: opens the phone's share sheet (WhatsApp...). On a device without
@@ -63,21 +64,38 @@ export function SharePanel({ save, now, onPartnerCode }: Props) {
   }
 
   function handleUse() {
-    const problem = onPartnerCode(pasted)
-    if (problem === null) {
-      setPasted('')
-      setNote({ text: 'Code read. Their card is on the Village screen.', ok: true })
-    } else {
+    const { problem, news } = onPartnerCode(pasted)
+    if (problem !== null) {
       setNote({ text: PROBLEM_TEXT[problem], ok: false })
+      return
     }
+    setPasted('')
+
+    // Say what the code brought with it, party quests first.
+    const lines = ['Code read. Their card is on the Village screen.']
+    if (news.confirmed.length > 0) {
+      const xp = news.confirmed.length * PARTY_QUEST_XP
+      const names = news.confirmed.map((log) => log.name).join(', ')
+      lines.push(`${partnerName} confirmed: ${names}. +${xp} Together XP!`)
+    }
+    if (news.toConfirm.length > 0) {
+      const names = news.toConfirm.map((log) => log.name).join(', ')
+      lines.push(`Waiting for you on the Quests screen: ${names}.`)
+    }
+    if (news.declined.length > 0) {
+      const names = news.declined.map((log) => log.name).join(', ')
+      lines.push(`${partnerName} declined: ${names}.`)
+    }
+    setNote({ text: lines.join(' '), ok: true })
   }
 
   return (
     <section className="panel">
       <h2>Share with your partner</h2>
       <p className="panel-text">
-        A share code shows your partner your levels and shields. Send yours on
-        WhatsApp, and paste theirs below. It holds no dailies, quests or
+        A share code shows your partner your levels and shields, and carries
+        your party quests to them for confirming. Send yours on WhatsApp, and
+        paste theirs below. It holds no dailies, challenges, epic quests or
         history.
       </p>
 

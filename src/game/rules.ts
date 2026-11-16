@@ -39,6 +39,26 @@ export const MAX_SHIELDS = 2 // the most a player can hold
 // milestone pays this much XP in the epic's realm.
 export const EPIC_MILESTONE_XP = 100
 
+// PARTY QUESTS: things you do as a pair. Either player logs one; it pays
+// this much Together XP to each of you once the other confirms it.
+export const PARTY_QUEST_XP = 25
+
+// The party quests every save starts with. Each player can change their own
+// list later without touching this file.
+export const DEFAULT_PARTY_QUESTS = [
+  { id: 'party-1', name: 'Date night' },
+  { id: 'party-2', name: 'Cooking together' },
+  { id: 'party-3', name: 'A walk together' },
+  { id: 'party-4', name: 'Weekly campfire review' },
+] as const
+
+export const MAX_PARTY_QUESTS = 8
+export const MAX_PARTY_QUEST_NAME_LENGTH = 40
+// How many logged party quests the save remembers, and how many of the
+// newest ones travel in a share code.
+export const MAX_PARTY_LOGS = 200
+export const PARTY_LOGS_IN_CODE = 20
+
 // Sensible limits for what can be typed into an epic quest.
 export const MAX_EPICS = 8
 export const MAX_MILESTONES = 15

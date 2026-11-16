@@ -16,6 +16,7 @@ import { DailyRow } from './DailyRow.tsx'
 import { EditDailies } from './EditDailies.tsx'
 import { EpicCard } from './EpicCard.tsx'
 import { EpicForm } from './EpicForm.tsx'
+import { PartyPanel } from './PartyPanel.tsx'
 import { Icon } from './Icon.tsx'
 
 type Props = {
@@ -39,6 +40,12 @@ type Props = {
   ) => void
   onRemoveEpic: (epicId: string) => void
   onMilestone: (epicId: string, milestoneId: string) => void
+  onLogParty: (questId: string) => void
+  onConfirmParty: (logId: string) => void
+  onDeclineParty: (logId: string) => void
+  onCancelParty: (logId: string) => void
+  onAddPartyQuest: (name: string) => void
+  onRemovePartyQuest: (questId: string) => void
 }
 
 export function QuestLog({
@@ -56,6 +63,12 @@ export function QuestLog({
   onUpdateEpic,
   onRemoveEpic,
   onMilestone,
+  onLogParty,
+  onConfirmParty,
+  onDeclineParty,
+  onCancelParty,
+  onAddPartyQuest,
+  onRemovePartyQuest,
 }: Props) {
   // Which epic quest form is open: none, the "new" one, or the edit form
   // for one epic (remembered by its id).
@@ -209,6 +222,18 @@ export function QuestLog({
           </button>
         )}
       </section>
+
+      {/* ----- Party quests ----- */}
+      <PartyPanel
+        save={save}
+        now={now}
+        onLog={onLogParty}
+        onConfirm={onConfirmParty}
+        onDecline={onDeclineParty}
+        onCancel={onCancelParty}
+        onAdd={onAddPartyQuest}
+        onRemove={onRemovePartyQuest}
+      />
 
       {/* ----- Epic quests ----- */}
       <section className="panel">

@@ -79,13 +79,17 @@ export function ActivityLog({ save, now, onRemove, onOpenHistory }: Props) {
                     · {describeTime(entry, now)}
                   </span>
                 </div>
-                {entry.challengeId === undefined ? (
+                {entry.challengeId === undefined && entry.partyId === undefined ? (
                   <ConfirmButton label="Remove" onConfirm={() => onRemove(index)} />
                 ) : (
-                  // Tier rewards and shield notes belong to the challenge,
-                  // so they stay.
+                  // Tier rewards, shield notes and party quest XP are not the
+                  // player's own taps, so they stay.
                   <span className="activity-reward">
-                    {entry.shield === true ? 'Shield' : 'Reward'}
+                    {entry.shield === true
+                      ? 'Shield'
+                      : entry.partyId !== undefined
+                        ? 'Party'
+                        : 'Reward'}
                   </span>
                 )}
               </li>
