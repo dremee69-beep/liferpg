@@ -67,6 +67,9 @@ export function completeDaily(
 export function removeLogEntry(save: SaveData, index: number): SaveData {
   const entry = save.log[index]
   if (entry === undefined) return save // no such entry: change nothing
+  // A challenge reward goes with a finished tier, so it cannot be removed
+  // on its own.
+  if (entry.challengeId !== undefined) return save
   return {
     ...save,
     realmXp: {
@@ -81,6 +84,13 @@ export function removeLogEntry(save: SaveData, index: number): SaveData {
 
 // Undo the most recent action (for instant mis-taps).
 // With an empty log there is nothing to undo.
+// If that action also finished a challenge tier, the reward entry sits after
+// it in the log; we skip past rewards and take back the player's own action.
 export function undoLastAction(save: SaveData): SaveData {
-  return removeLogEntry(save, save.log.length - 1)
+  for (let index = save.log.length - 1; index >= 0; index--) {
+    if (save.log[index].challengeId === undefined) {
+      return removeLogEntry(save, index)
+    }
+  }
+  return save
 }

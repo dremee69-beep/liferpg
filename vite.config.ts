@@ -10,6 +10,13 @@ const BASE = '/liferpg/'
 // https://vite.dev/config/
 export default defineConfig({
   base: BASE,
+
+  // While developing, serve the app on 127.0.0.1: the plain "this computer"
+  // address that every browser can reach. (Without this, the server may
+  // listen only on the newer IPv6 address, and some browsers cannot connect.)
+  // It is still private to this computer; nothing else on the Wi-Fi can see it.
+  server: { host: '127.0.0.1' },
+  preview: { host: '127.0.0.1' },
   plugins: [
     react(),
 

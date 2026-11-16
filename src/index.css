@@ -605,6 +605,236 @@ p {
   outline-offset: 2px;
 }
 
+/* ---------- Challenges ---------- */
+
+/* The "2 skill points" chip next to the Challenges heading. */
+.points-chip {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--track);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.challenge {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 2px solid var(--line);
+  border-left: 6px solid var(--accent);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.challenge-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.challenge-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 1.0625rem;
+  overflow-wrap: anywhere;
+}
+
+.challenge-tier-chip {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.challenge-text {
+  font-size: 0.9375rem;
+}
+
+/* A progress row: label, little boxes, then the count in words. */
+.challenge-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.challenge-label {
+  width: 72px;
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.boxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+}
+
+.box {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--accent);
+  border-radius: 4px;
+}
+
+.box-filled {
+  background: var(--accent);
+}
+
+.challenge-count {
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.challenge-hint {
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
+
+.challenge-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* The challenge's progress line on a realm card in the Village. */
+.realm-challenge {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--track);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.realm-challenge-name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+/* "Reward" label where a Remove button would otherwise be. */
+.activity-reward {
+  flex-shrink: 0;
+  min-width: 92px;
+  text-align: center;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+/* ---------- Challenge form ---------- */
+
+.challenge-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border: 2px dashed var(--accent);
+  border-radius: 12px;
+}
+
+/* One question in the form: its label, then its box. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+/* A drop-down list, styled to match the text boxes. */
+.edit-select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 10px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+}
+
+.edit-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.edit-select:disabled {
+  background: var(--track);
+  color: var(--ink-soft);
+}
+
+.tier-locked {
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+.tier-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.tier-edit-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tier-number {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.tier-remove {
+  min-height: 36px;
+  padding: 0 8px;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tier-numbers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 /* ---------- Tab bar at the bottom ---------- */
 
 .tabbar {
@@ -749,10 +979,6 @@ p {
   box-shadow: 0 6px 18px rgb(58 46 34 / 0.3);
 }
 
-.notice-levelup {
-  background: #8a5a00;
-}
-
 .notice-undo {
   flex-shrink: 0;
   min-height: 44px;
@@ -851,10 +1077,10 @@ p {
   }
 }
 
-/* ---------- Level-up card ---------- */
+/* ---------- Celebration card (level-up, tier complete) ---------- */
 
 /* Covers the screen but lets taps pass through to the app underneath. */
-.levelup-layer {
+.celebration-layer {
   position: fixed;
   inset: 0;
   z-index: 10;
@@ -864,7 +1090,7 @@ p {
   pointer-events: none;
 }
 
-.levelup-card {
+.celebration-card {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -896,7 +1122,7 @@ p {
   }
 }
 
-.levelup-icon {
+.celebration-icon {
   animation: icon-bounce 700ms ease-out 200ms both;
 }
 
@@ -918,17 +1144,17 @@ p {
   }
 }
 
-.levelup-title {
+.celebration-title {
   font-size: 1.625rem;
   font-weight: 800;
   color: var(--accent);
 }
 
-.levelup-realm {
+.celebration-line {
   font-size: 1.0625rem;
 }
 
-.levelup-player {
+.celebration-chip {
   margin-top: 4px;
   padding: 4px 12px;
   border-radius: 999px;
@@ -939,7 +1165,7 @@ p {
 }
 
 /* The sparkles all start at the centre of the card and fly outwards. */
-.levelup-sparkles {
+.celebration-sparkles {
   position: absolute;
   left: 50%;
   top: 38%;
@@ -963,7 +1189,7 @@ p {
   background: #d9ae2b;
 }
 
-/* --fly-x and --fly-y are set on each sparkle by LevelUpCard.tsx. */
+/* --fly-x and --fly-y are set on each sparkle by CelebrationCard.tsx. */
 @keyframes sparkle-fly {
   0% {
     opacity: 1;
@@ -981,10 +1207,10 @@ p {
 /* Respect the phone's "reduce motion" setting: no movement, gentle fades. */
 @media (prefers-reduced-motion: reduce) {
   .daily-just-ticked .daily-box,
-  .levelup-icon {
+  .celebration-icon {
     animation: none;
   }
-  .levelup-card {
+  .celebration-card {
     animation: simple-fade 200ms ease-out;
   }
   .sparkle {

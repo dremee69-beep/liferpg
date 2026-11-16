@@ -1,18 +1,17 @@
-// THE LEVEL-UP MOMENT: a card in the middle of the screen with the realm's
-// icon, the new level and a burst of pixel sparkles. It closes by itself, or
-// straight away if you tap it. Taps anywhere else pass through to the app
-// underneath, so it never gets in the way of logging.
+// A CELEBRATION CARD: appears in the middle of the screen for a level-up or
+// a finished challenge tier, with the realm's icon and a burst of pixel
+// sparkles. It closes by itself, or straight away if you tap it. Taps anywhere
+// else pass through to the app underneath, so it never gets in the way.
 
 import { useEffect } from 'react'
-import type { CSSProperties } from 'react'
-import { REALMS } from '../game/rules.ts'
+import type { CSSProperties, ReactNode } from 'react'
 import type { RealmId } from '../game/rules.ts'
 import { PixelIcon } from './PixelIcon.tsx'
 
 type Props = {
-  realm: RealmId
-  level: number // the realm's new level
-  playerLevel: number // the player's new overall level
+  realm: RealmId // decides the icon and the colour
+  title: string // the big line, e.g. "Level up!"
+  children: ReactNode // the smaller lines underneath
   onClose: () => void
 }
 
@@ -34,26 +33,19 @@ const SPARKLES = [
   { x: 0, y: 105 },
 ]
 
-export function LevelUpCard({ realm, level, playerLevel, onClose }: Props) {
+export function CelebrationCard({ realm, title, children, onClose }: Props) {
   // Close by itself after a short while.
   useEffect(() => {
     const timer = setTimeout(onClose, SHOW_MS)
     return () => clearTimeout(timer)
   }, [onClose])
 
-  const realmName = REALMS.find((r) => r.id === realm)?.name
-
   return (
     // The wrapper covers the screen but lets taps through; only the card
     // itself can be tapped.
-    <div className="levelup-layer" data-realm={realm}>
-      <button
-        type="button"
-        className="levelup-card"
-        onClick={onClose}
-        aria-label={`Level up. ${realmName} reached level ${level}. Tap to close.`}
-      >
-        <span className="levelup-sparkles" aria-hidden="true">
+    <div className="celebration-layer" data-realm={realm}>
+      <button type="button" className="celebration-card" onClick={onClose}>
+        <span className="celebration-sparkles" aria-hidden="true">
           {SPARKLES.map((sparkle, index) => (
             <span
               key={index}
@@ -72,14 +64,11 @@ export function LevelUpCard({ realm, level, playerLevel, onClose }: Props) {
           ))}
         </span>
 
-        <span className="levelup-icon">
+        <span className="celebration-icon">
           <PixelIcon name={realm} size={72} />
         </span>
-        <span className="levelup-title">Level up!</span>
-        <span className="levelup-realm">
-          {realmName} reached <strong>level {level}</strong>
-        </span>
-        <span className="levelup-player">Player level {playerLevel}</span>
+        <span className="celebration-title">{title}</span>
+        {children}
       </button>
     </div>
   )

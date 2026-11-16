@@ -22,7 +22,8 @@ import type { RealmXp } from '../game/xp.ts'
 //   Version 1: player, realm XP, log.
 //   Version 2: adds the player's list of daily quests.
 //   Version 3: each daily quest has its own XP size (10 or 25).
-export const SAVE_VERSION = 3
+//   Version 4: adds the player's challenges and their skill points.
+export const SAVE_VERSION = 4
 
 // The names (keys) our data is filed under in the browser's notebook.
 const SAVE_KEY = 'liferpg-save'
@@ -36,6 +37,39 @@ export type LogEntry = {
   xp: number
   at: string
   dailyId?: string
+  // Set on the bonus XP paid for finishing a challenge tier. These reward
+  // entries are not something the player did, so they never count as
+  // activity and cannot be removed by hand.
+  challengeId?: string
+}
+
+// One tier of a challenge: "do it `daysPerWeek` days a week, for `weeks` weeks".
+export type ChallengeTier = {
+  name: string
+  daysPerWeek: number
+  weeks: number
+}
+
+// A challenge: a chain of tiers in one realm, worked through in order.
+export type Challenge = {
+  id: string
+  realm: RealmId
+  name: string
+  // What counts as an active day: one particular daily quest (its id), or
+  // null for "anything logged in this realm".
+  dailyId: string | null
+  tiers: ChallengeTier[]
+  // Which tier is in progress: 0 is the first. When it equals the number of
+  // tiers, every tier is finished.
+  tierIndex: number
+  // On-target weeks already counted towards the tier in progress.
+  weeksDone: number
+  // The last week whose result has been recorded (a week key: its Monday).
+  // The next week to look at is always the one after this.
+  lastCountedWeek: string
+  // The week the challenge was created in. If that first, partial week is
+  // missed it is a free pass (this matters once shields exist).
+  startedWeek: string
 }
 
 // One daily quest: a repeatable action that can be ticked once a day.
@@ -54,6 +88,15 @@ export type SaveData = {
   realmXp: RealmXp
   log: LogEntry[]
   dailies: Daily[]
+  challenges: Challenge[]
+  // Skill points earned in each realm (one per finished challenge tier).
+  // They will be spent in the skill trees and reward shop later.
+  skillPoints: RealmXp
+}
+
+// Every realm at zero: used for fresh XP and fresh skill points.
+function zeroPerRealm(): RealmXp {
+  return { health: 0, mind: 0, wealth: 0, together: 0, questAbroad: 0 }
 }
 
 // A fresh copy of the starting daily quests.
@@ -73,9 +116,11 @@ export function newSave(player: PlayerId): SaveData {
   return {
     version: SAVE_VERSION,
     player,
-    realmXp: { health: 0, mind: 0, wealth: 0, together: 0, questAbroad: 0 },
+    realmXp: zeroPerRealm(),
     log: [],
     dailies: defaultDailies(),
+    challenges: [],
+    skillPoints: zeroPerRealm(),
   }
 }
 
@@ -95,6 +140,51 @@ function isRealmId(value: unknown): value is RealmId {
 
 function isPlayerId(value: unknown): value is PlayerId {
   return PLAYERS.some((player) => player.id === value)
+}
+
+// A whole number (no fractions) that is zero or more.
+function isCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0
+}
+
+// Text shaped like a day key, e.g. "2026-11-09".
+function isDayKey(value: unknown): value is string {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+}
+
+// Reads one challenge from loaded data. Returns null if it is not usable.
+function readChallenge(value: unknown): Challenge | null {
+  if (!isObject(value)) return null
+  if (typeof value.id !== 'string' || typeof value.name !== 'string') return null
+  if (!isRealmId(value.realm) || !Array.isArray(value.tiers)) return null
+  if (!isCount(value.tierIndex) || !isCount(value.weeksDone)) return null
+  if (!isDayKey(value.lastCountedWeek) || !isDayKey(value.startedWeek)) return null
+
+  const tiers: ChallengeTier[] = []
+  for (const tier of value.tiers) {
+    if (
+      !isObject(tier) ||
+      typeof tier.name !== 'string' ||
+      !isCount(tier.daysPerWeek) ||
+      !isCount(tier.weeks)
+    ) {
+      return null
+    }
+    tiers.push({ name: tier.name, daysPerWeek: tier.daysPerWeek, weeks: tier.weeks })
+  }
+
+  return {
+    id: value.id,
+    realm: value.realm,
+    name: value.name,
+    dailyId: typeof value.dailyId === 'string' ? value.dailyId : null,
+    tiers,
+    // Never point past the end of the tier list.
+    tierIndex: Math.min(value.tierIndex, tiers.length),
+    weeksDone: value.weeksDone,
+    lastCountedWeek: value.lastCountedWeek,
+    startedWeek: value.startedWeek,
+  }
 }
 
 // Upgrades an older save to the newest shape, one version at a time.
@@ -119,6 +209,17 @@ function migrate(data: Record<string, unknown>): Record<string, unknown> {
         )
       : upgraded.dailies
     upgraded = { ...upgraded, version: 3, dailies }
+  }
+
+  // Version 3 -> 4: challenges and skill points arrive. Nobody has any yet,
+  // so both start empty. Everything else is left exactly as it was.
+  if (upgraded.version === 3) {
+    upgraded = {
+      ...upgraded,
+      version: 4,
+      challenges: [],
+      skillPoints: zeroPerRealm(),
+    }
   }
 
   return upgraded
@@ -168,6 +269,9 @@ export function parseSave(text: string): SaveData | null {
           at: entry.at,
         }
         if (typeof entry.dailyId === 'string') logEntry.dailyId = entry.dailyId
+        if (typeof entry.challengeId === 'string') {
+          logEntry.challengeId = entry.challengeId
+        }
         log.push(logEntry)
       }
     }
@@ -194,7 +298,34 @@ export function parseSave(text: string): SaveData | null {
     }
   }
 
-  return { version: SAVE_VERSION, player: data.player, realmXp, log, dailies }
+  // Challenges: keep the ones that look right.
+  const challenges: Challenge[] = []
+  if (Array.isArray(data.challenges)) {
+    for (const value of data.challenges) {
+      const challenge = readChallenge(value)
+      if (challenge !== null) challenges.push(challenge)
+    }
+  }
+
+  // Skill points per realm, read the same careful way as XP.
+  const pointsIn = isObject(data.skillPoints) ? data.skillPoints : {}
+  const skillPoints = zeroPerRealm()
+  for (const realm of REALMS) {
+    const value = pointsIn[realm.id]
+    if (value === undefined) continue
+    if (!isCount(value)) return null
+    skillPoints[realm.id] = value
+  }
+
+  return {
+    version: SAVE_VERSION,
+    player: data.player,
+    realmXp,
+    log,
+    dailies,
+    challenges,
+    skillPoints,
+  }
 }
 
 // Asks the browser to treat our data as important, so it is not cleared when

@@ -25,6 +25,28 @@ export const MAX_DAILIES_PER_REALM = 3
 // The longest name a daily quest can have, in letters.
 export const MAX_DAILY_NAME_LENGTH = 60
 
+// CHALLENGES: chains of tiers with a weekly target. Finishing a tier pays
+// this reward (in the challenge's realm) and unlocks the next tier.
+export const TIER_REWARD_XP = 50
+export const TIER_REWARD_SKILL_POINTS = 1
+
+// Sensible limits for what can be typed into a challenge.
+export const MAX_CHALLENGES = 12
+export const MAX_TIERS = 10
+export const MAX_TIER_WEEKS = 12
+export const MAX_CHALLENGE_NAME_LENGTH = 40
+
+// The ready-made example from the rulebook: Health, "Movement".
+export const EXAMPLE_CHALLENGE = {
+  realm: 'health',
+  name: 'Movement',
+  tiers: [
+    { name: 'Getting Moving', daysPerWeek: 3, weeks: 2 },
+    { name: 'Habit Forming', daysPerWeek: 4, weeks: 3 },
+    { name: 'Unstoppable', daysPerWeek: 5, weeks: 4 },
+  ],
+} as const
+
 // Each realm level needs this much MORE XP than the level before it.
 // Level 1 -> 2 costs 100, level 2 -> 3 costs 200, and so on.
 export const XP_STEP_PER_LEVEL = 100

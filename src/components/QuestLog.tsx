@@ -1,11 +1,15 @@
-// THE QUEST LOG: all of today's dailies in one place, and where you edit
-// your list of dailies. Challenges and epic quests will be added here.
+// THE QUEST LOG: today's dailies, your challenges, and where you add and
+// edit both. Epic quests will be added here later.
 
 import { useState } from 'react'
+import { canAddChallenge, challengeView } from '../game/challenges.ts'
+import type { ChallengeInput } from '../game/challenges.ts'
 import { dailyStatuses } from '../game/dailies.ts'
 import { REALMS } from '../game/rules.ts'
 import type { RealmId } from '../game/rules.ts'
-import type { SaveData } from '../storage/save.ts'
+import type { ChallengeTier, SaveData } from '../storage/save.ts'
+import { ChallengeCard } from './ChallengeCard.tsx'
+import { ChallengeForm } from './ChallengeForm.tsx'
 import { DailyRow } from './DailyRow.tsx'
 import { EditDailies } from './EditDailies.tsx'
 import { PixelIcon } from './PixelIcon.tsx'
@@ -18,6 +22,12 @@ type Props = {
   onRenameDaily: (dailyId: string, name: string) => void
   onResizeDaily: (dailyId: string, xp: number) => void
   onRemoveDaily: (dailyId: string) => void
+  onAddChallenge: (input: ChallengeInput) => void
+  onUpdateChallenge: (
+    challengeId: string,
+    changes: { name: string; dailyId: string | null; tiers: ChallengeTier[] },
+  ) => void
+  onRemoveChallenge: (challengeId: string) => void
 }
 
 export function QuestLog({
@@ -28,8 +38,16 @@ export function QuestLog({
   onRenameDaily,
   onResizeDaily,
   onRemoveDaily,
+  onAddChallenge,
+  onUpdateChallenge,
+  onRemoveChallenge,
 }: Props) {
-  const [editing, setEditing] = useState(false)
+  const [editingDailies, setEditingDailies] = useState(false)
+  // Which challenge form is open: none, the "new challenge" one, or the
+  // edit form for one challenge (remembered by its id).
+  const [challengeForm, setChallengeForm] = useState<'closed' | 'new' | string>(
+    'closed',
+  )
 
   // Work out each realm's dailies once, then count how many are done.
   const groups = REALMS.map((realm) => ({
@@ -42,6 +60,12 @@ export function QuestLog({
     0,
   )
 
+  // Skill points across all realms.
+  const skillPoints = REALMS.reduce(
+    (sum, realm) => sum + save.skillPoints[realm.id],
+    0,
+  )
+
   return (
     <main className="screen quests">
       <header className="screen-header">
@@ -51,19 +75,20 @@ export function QuestLog({
         </p>
       </header>
 
+      {/* ----- Dailies ----- */}
       <section className="panel">
         <div className="panel-top">
-          <h2>{editing ? 'Edit dailies' : "Today's dailies"}</h2>
+          <h2>{editingDailies ? 'Edit dailies' : "Today's dailies"}</h2>
           <button
             type="button"
             className="link-button"
-            onClick={() => setEditing(!editing)}
+            onClick={() => setEditingDailies(!editingDailies)}
           >
-            {editing ? 'Done' : 'Edit'}
+            {editingDailies ? 'Done' : 'Edit'}
           </button>
         </div>
 
-        {editing ? (
+        {editingDailies ? (
           <EditDailies
             save={save}
             onAdd={onAddDaily}
@@ -86,11 +111,77 @@ export function QuestLog({
         )}
       </section>
 
+      {/* ----- Challenges ----- */}
       <section className="panel">
-        <h2>Challenges and epic quests</h2>
+        <div className="panel-top">
+          <h2>Challenges</h2>
+          <span className="points-chip">
+            {skillPoints} skill {skillPoints === 1 ? 'point' : 'points'}
+          </span>
+        </div>
+
+        {save.challenges.length === 0 && challengeForm === 'closed' && (
+          <p className="panel-text">
+            A challenge is a chain of tiers with a weekly target, like "3 days
+            a week for 2 weeks". The app counts your days from what you log.
+            Finishing a tier gives 50 XP and 1 skill point.
+          </p>
+        )}
+
+        {save.challenges.map((challenge) =>
+          challengeForm === challenge.id ? (
+            <ChallengeForm
+              key={challenge.id}
+              save={save}
+              existing={challenge}
+              onCancel={() => setChallengeForm('closed')}
+              onSave={(input) => {
+                onUpdateChallenge(challenge.id, {
+                  name: input.name,
+                  dailyId: input.dailyId,
+                  tiers: input.tiers,
+                })
+                setChallengeForm('closed')
+              }}
+            />
+          ) : (
+            <ChallengeCard
+              key={challenge.id}
+              view={challengeView(save, challenge, now)}
+              onEdit={() => setChallengeForm(challenge.id)}
+              onRemove={() => onRemoveChallenge(challenge.id)}
+            />
+          ),
+        )}
+
+        {challengeForm === 'new' && (
+          <ChallengeForm
+            save={save}
+            onCancel={() => setChallengeForm('closed')}
+            onSave={(input) => {
+              onAddChallenge(input)
+              setChallengeForm('closed')
+            }}
+          />
+        )}
+
+        {challengeForm === 'closed' && canAddChallenge(save) && (
+          <button
+            type="button"
+            className="button button-wide"
+            onClick={() => setChallengeForm('new')}
+          >
+            + Add a challenge
+          </button>
+        )}
+      </section>
+
+      {/* ----- Epic quests (not built yet) ----- */}
+      <section className="panel">
+        <h2>Epic quests</h2>
         <p className="panel-text">
-          Coming in the next updates. You will add your own here after each
-          Game Master session.
+          Coming in a later update: long goals with milestones worth 100 XP
+          each.
         </p>
       </section>
     </main>

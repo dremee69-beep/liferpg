@@ -1,6 +1,7 @@
 // THE VILLAGE (home screen): who you are, your player level, the five realm
 // cards with their log buttons, and your recent activity.
 
+import { challengeView } from '../game/challenges.ts'
 import { dailyStatuses } from '../game/dailies.ts'
 import { PLAYERS, REALMS } from '../game/rules.ts'
 import type { RealmId } from '../game/rules.ts'
@@ -40,6 +41,9 @@ export function Village({ save, now, onLog, onDaily, onRemoveEntry }: Props) {
           realm={realm}
           xp={save.realmXp[realm.id]}
           dailies={dailyStatuses(save, realm.id, now)}
+          challenges={save.challenges
+            .filter((challenge) => challenge.realm === realm.id)
+            .map((challenge) => challengeView(save, challenge, now))}
           onLog={onLog}
           onDaily={onDaily}
         />

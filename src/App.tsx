@@ -1,14 +1,15 @@
 // THE APP: the conductor. It holds the save in memory, decides which screen
 // to show, and writes the save to the device after every change.
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Camp } from './components/Camp.tsx'
-import { LevelUpCard } from './components/LevelUpCard.tsx'
+import { CelebrationCard } from './components/CelebrationCard.tsx'
 import { PlayerPicker } from './components/PlayerPicker.tsx'
 import { QuestLog } from './components/QuestLog.tsx'
 import { TabBar } from './components/TabBar.tsx'
 import type { ScreenId } from './components/TabBar.tsx'
 import { Village } from './components/Village.tsx'
+import { buzz } from './feedback.ts'
 import {
   completeDaily,
   logAction,
@@ -16,14 +17,24 @@ import {
   undoLastAction,
 } from './game/actions.ts'
 import {
+  addChallenge,
+  removeChallenge,
+  settleChallenges,
+  updateChallenge,
+} from './game/challenges.ts'
+import type { TierCompletion } from './game/challenges.ts'
+import {
   addDaily,
   removeDaily,
   renameDaily,
   setDailyXp,
 } from './game/dailies.ts'
-import { REALMS } from './game/rules.ts'
+import {
+  REALMS,
+  TIER_REWARD_SKILL_POINTS,
+  TIER_REWARD_XP,
+} from './game/rules.ts'
 import type { PlayerId, RealmId } from './game/rules.ts'
-import { buzz } from './feedback.ts'
 import { levelForXp, playerLevel } from './game/xp.ts'
 import {
   askToKeepData,
@@ -37,16 +48,17 @@ import type { SaveData } from './storage/save.ts'
 type Notice = {
   id: number // changes every time, so the hide-timer restarts
   text: string
-  levelUp: boolean
   canUndo: boolean
 }
 
-// A realm that has just reached a new level.
-type LevelUp = {
-  id: number // changes every time, so two level-ups in a row both show
-  realm: RealmId
-  level: number
-}
+// Something worth a card in the middle of the screen. If several happen at
+// once (a tap finishes a tier AND levels up the realm) they wait in a queue
+// and are shown one after another.
+type CelebrationContent =
+  | { kind: 'level'; realm: RealmId; level: number }
+  | { kind: 'tier'; done: TierCompletion }
+// Once queued, each card also gets a number of its own.
+type Celebration = CelebrationContent & { id: number }
 
 // How long the message stays on screen, in milliseconds.
 const NOTICE_MS = 4000
@@ -57,13 +69,18 @@ function App() {
   const [save, setSave] = useState<SaveData | null>(() => loadSave())
   const [notice, setNotice] = useState<Notice | null>(null)
   const [saveFailed, setSaveFailed] = useState(false)
-  // Set when a realm has just levelled up, to show the level-up card.
-  const [levelUp, setLevelUp] = useState<LevelUp | null>(null)
-  // useCallback keeps this the very same function between screen refreshes,
-  // so the card's close-by-itself timer is not restarted by accident.
-  const closeLevelUp = useCallback(() => setLevelUp(null), [])
   // Which screen is showing once a player exists.
   const [screen, setScreen] = useState<ScreenId>('village')
+
+  // The queue of celebration cards. The first one is the one on screen.
+  const [celebrations, setCelebrations] = useState<Celebration[]>([])
+  const nextCelebrationId = useRef(0)
+  // useCallback keeps this the very same function between screen refreshes,
+  // so a card's close-by-itself timer is not restarted by accident.
+  const closeCelebration = useCallback(
+    () => setCelebrations((queue) => queue.slice(1)),
+    [],
+  )
 
   // Hide the message by itself after a few seconds.
   useEffect(() => {
@@ -72,9 +89,10 @@ function App() {
     return () => clearTimeout(timer)
   }, [notice])
 
-  // The current time, which decides what counts as "today" for dailies.
+  // The current time, which decides what counts as "today" and "this week".
   // It is refreshed every minute and whenever the app comes back to the
-  // front, so dailies open up again after midnight without restarting.
+  // front, so dailies reopen after midnight and weeks roll over on Monday
+  // without restarting the app.
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
     const refresh = () => setNow(new Date())
@@ -92,11 +110,47 @@ function App() {
     if (hasSave) askToKeepData()
   }, [hasSave])
 
-  // Every change goes through here: update the screen AND the device.
-  function commit(next: SaveData) {
-    setSave(next)
-    setSaveFailed(!writeSave(next))
+  // Add cards to the end of the celebration queue.
+  function celebrate(cards: CelebrationContent[]) {
+    if (cards.length === 0) return
+    const withIds = cards.map((card): Celebration => {
+      nextCelebrationId.current += 1
+      return { ...card, id: nextCelebrationId.current }
+    })
+    setCelebrations((queue) => [...queue, ...withIds])
   }
+
+  // Every change goes through here: bring the challenges up to date, then
+  // update the screen AND the device.
+  function commit(next: SaveData) {
+    const settled = settleChallenges(next, new Date())
+    setSave(settled.save)
+    setSaveFailed(!writeSave(settled.save))
+
+    // A finished tier gets a card. If its 50 bonus XP also pushed the realm
+    // up a level, that gets a card too, straight after.
+    const cards: CelebrationContent[] = []
+    for (const done of settled.completed) {
+      cards.push({ kind: 'tier', done })
+      const levelBefore = levelForXp(next.realmXp[done.realm])
+      const levelAfter = levelForXp(settled.save.realmXp[done.realm])
+      if (levelAfter > levelBefore) {
+        cards.push({ kind: 'level', realm: done.realm, level: levelAfter })
+      }
+    }
+    if (cards.length > 0) buzz('levelUp')
+    celebrate(cards)
+  }
+
+  // Time passing can change things on its own: a new week begins, or the app
+  // is opened after days away. So whenever the clock is refreshed (and once
+  // when the app starts) we settle up, and save only if something changed.
+  useEffect(() => {
+    if (save === null) return
+    if (settleChallenges(save, now).save !== save) commit(save)
+    // This should run when the clock moves, not on every save change:
+    // commit() already settles each change as it happens.
+  }, [now])
 
   // For edits that may turn out to be "nothing changed" (for example a
   // rename to the same name): only save when there is something new.
@@ -116,29 +170,28 @@ function App() {
   }
 
   // Shared by every XP-earning tap: save the change, then show a message
-  // (a level-up message if the realm just reached a new level).
+  // (and a level-up card if the realm just reached a new level).
   function commitXpGain(
     before: SaveData,
     after: SaveData,
     realmId: RealmId,
     text: string,
   ) {
-    commit(after)
-    setNow(new Date())
-
     const levelBefore = levelForXp(before.realmXp[realmId])
     const levelAfter = levelForXp(after.realmXp[realmId])
 
     if (levelAfter > levelBefore) {
-      // A new level: show the level-up card and give a longer buzz.
-      setLevelUp({ id: Date.now(), realm: realmId, level: levelAfter })
+      celebrate([{ kind: 'level', realm: realmId, level: levelAfter }])
       buzz('levelUp')
     } else {
       buzz('tap')
     }
 
+    commit(after)
+    setNow(new Date())
+
     // The message bar always appears, so Undo is there even on a level-up.
-    setNotice({ id: Date.now(), text, levelUp: false, canUndo: true })
+    setNotice({ id: Date.now(), text, canUndo: true })
   }
 
   // The Small / Big buttons.
@@ -162,22 +215,22 @@ function App() {
 
   function handleUndo() {
     if (save === null) return
-    setLevelUp(null) // if the undone tap caused a level-up, hide its card
+    setCelebrations([]) // hide any card the undone tap caused
     commit(undoLastAction(save))
-    setNotice({ id: Date.now(), text: 'Undone', levelUp: false, canUndo: false })
+    setNotice({ id: Date.now(), text: 'Undone', canUndo: false })
   }
 
   // "Remove" on an entry in the Recent activity list.
   function handleRemoveEntry(index: number) {
     if (save === null) return
     const entry = save.log[index]
-    if (entry === undefined) return
-    commit(removeLogEntry(save, index))
+    const next = removeLogEntry(save, index)
+    if (entry === undefined || next === save) return
+    commit(next)
     setNow(new Date())
     setNotice({
       id: Date.now(),
       text: `Removed, ${entry.xp} XP taken back`,
-      levelUp: false,
       canUndo: false,
     })
   }
@@ -186,18 +239,16 @@ function App() {
   function handleImport(imported: SaveData) {
     commit(imported)
     setScreen('village')
-    setNotice({
-      id: Date.now(),
-      text: 'Save imported',
-      levelUp: false,
-      canUndo: false,
-    })
+    setNotice({ id: Date.now(), text: 'Save imported', canUndo: false })
   }
 
   // First launch: ask who is playing (or bring in a backup).
   if (save === null) {
     return <PlayerPicker onPick={handlePick} onImport={handleImport} />
   }
+
+  // The card on screen right now, if any.
+  const card = celebrations[0]
 
   return (
     <>
@@ -234,27 +285,56 @@ function App() {
           onRemoveDaily={(dailyId) =>
             commitIfChanged(removeDaily(save, dailyId))
           }
+          onAddChallenge={(input) =>
+            commitIfChanged(addChallenge(save, input, new Date()))
+          }
+          onUpdateChallenge={(challengeId, changes) =>
+            commitIfChanged(updateChallenge(save, challengeId, changes))
+          }
+          onRemoveChallenge={(challengeId) =>
+            commitIfChanged(removeChallenge(save, challengeId))
+          }
         />
       )}
       {screen === 'camp' && <Camp save={save} onImport={handleImport} />}
 
       <TabBar current={screen} onChange={handleChangeScreen} />
 
-      {levelUp !== null && (
-        <LevelUpCard
-          key={levelUp.id}
-          realm={levelUp.realm}
-          level={levelUp.level}
-          playerLevel={playerLevel(save.realmXp)}
-          onClose={closeLevelUp}
-        />
+      {card !== undefined && card.kind === 'level' && (
+        <CelebrationCard
+          key={card.id}
+          realm={card.realm}
+          title="Level up!"
+          onClose={closeCelebration}
+        >
+          <span className="celebration-line">
+            {REALMS.find((r) => r.id === card.realm)?.name} reached{' '}
+            <strong>level {card.level}</strong>
+          </span>
+          <span className="celebration-chip">
+            Player level {playerLevel(save.realmXp)}
+          </span>
+        </CelebrationCard>
+      )}
+
+      {card !== undefined && card.kind === 'tier' && (
+        <CelebrationCard
+          key={card.id}
+          realm={card.done.realm}
+          title={card.done.allTiersDone ? 'Challenge complete!' : 'Tier complete!'}
+          onClose={closeCelebration}
+        >
+          <span className="celebration-line">
+            {card.done.challengeName}: <strong>{card.done.tierName}</strong>
+          </span>
+          <span className="celebration-chip">
+            +{TIER_REWARD_XP} XP · +{TIER_REWARD_SKILL_POINTS} skill point
+          </span>
+        </CelebrationCard>
       )}
 
       {notice !== null && (
-        <div
-          className={notice.levelUp ? 'notice notice-levelup' : 'notice'}
-          role="status"
-        >
+        <div className="notice" role="status">
           <span>{notice.text}</span>
           {notice.canUndo && (
             <button type="button" className="notice-undo" onClick={handleUndo}>

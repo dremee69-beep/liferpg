@@ -117,5 +117,13 @@ export function renameDaily(
 // past entries stay in the log.
 export function removeDaily(save: SaveData, dailyId: string): SaveData {
   if (!canRemoveDaily(save, dailyId)) return save
-  return { ...save, dailies: save.dailies.filter((d) => d.id !== dailyId) }
+  return {
+    ...save,
+    dailies: save.dailies.filter((d) => d.id !== dailyId),
+    // A challenge that counted only this daily now counts anything logged
+    // in its realm, so it can still be completed.
+    challenges: save.challenges.map((challenge) =>
+      challenge.dailyId === dailyId ? { ...challenge, dailyId: null } : challenge,
+    ),
+  }
 }

@@ -20,6 +20,11 @@ const PAGE_SIZE = 8
 
 // What an entry was: the daily's name, or a plain logged action.
 function describe(entry: LogEntry, save: SaveData): string {
+  // Bonus XP for finishing a challenge tier.
+  if (entry.challengeId !== undefined) {
+    const challenge = save.challenges.find((c) => c.id === entry.challengeId)
+    return challenge ? `Tier complete: ${challenge.name}` : 'Challenge tier complete'
+  }
   if (entry.dailyId !== undefined) {
     const daily = save.dailies.find((d) => d.id === entry.dailyId)
     return daily?.name ?? 'Daily quest'
@@ -73,7 +78,12 @@ export function ActivityLog({ save, now, onRemove }: Props) {
                     {realm?.name} · +{entry.xp} XP · {describeTime(entry, now)}
                   </span>
                 </div>
-                <ConfirmButton label="Remove" onConfirm={() => onRemove(index)} />
+                {entry.challengeId === undefined ? (
+                  <ConfirmButton label="Remove" onConfirm={() => onRemove(index)} />
+                ) : (
+                  // A tier reward belongs to the finished tier, so it stays.
+                  <span className="activity-reward">Reward</span>
+                )}
               </li>
             )
           })}
