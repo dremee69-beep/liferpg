@@ -7,6 +7,8 @@
 //   public/map/india-relief.png  the terrain picture: colour by height,
 //                                with soft shading on the slopes
 //   src/map/india.ts             the outline of India and of each state
+//   public/map/india-heights.png the height of the land, hidden in a picture,
+//                                so the app can tell how high a pin is
 //
 // The raw downloads are large and are NOT kept in the project's history.
 // To rebuild from scratch, fetch them again (the list is in CREDITS.md).
@@ -264,6 +266,53 @@ console.log(
 )
 
 // ---------------------------------------------------------------------------
+// Saving the heights for the app
+// ---------------------------------------------------------------------------
+
+// The app needs to look up the height at any pin. A picture file is a handy
+// way to carry a big grid of numbers: here each pixel's RED value is a height
+// code from 0 to 255 (green and blue are left at 0).
+//   0        = sea (or anything at or below sea level)
+//   1 to 255 = land; the height in metres is (code / HEIGHT_SCALE) squared.
+// Squaring means low places are stored finely (to about 10 m) and the
+// highest peaks more roughly (to about 40 m).
+// The grid keeps every reading in the data: one about every 2.4 km.
+const HEIGHT_SCALE = 2.7
+const HEIGHTS_SHRINK = 1
+const HEIGHTS_WIDE = Math.round(WIDTH * HEIGHTS_SHRINK)
+const HEIGHTS_HIGH = Math.round(HEIGHT * HEIGHTS_SHRINK)
+
+// Is this place in India, or within a few pixels of it? (The small margin
+// keeps true heights right up to the border and the coast.)
+function nearIndia(x, y) {
+  for (let dy = -4; dy <= 4; dy += 2) {
+    for (let dx = -4; dx <= 4; dx += 2) {
+      const mx = Math.round((x + dx) * PICTURE_SCALE)
+      const my = Math.round((y + dy) * PICTURE_SCALE)
+      if (mx < 0 || my < 0 || mx >= PICTURE_WIDE || my >= PICTURE_HIGH) continue
+      if (insideIndia[my * PICTURE_WIDE + mx]) return true
+    }
+  }
+  return false
+}
+
+const heightsPicture = makePng(HEIGHTS_WIDE, HEIGHTS_HIGH, (px, py) => {
+  const x = (px + 0.5) / HEIGHTS_SHRINK
+  const y = (py + 0.5) / HEIGHTS_SHRINK
+  const metres = heightAt(x, y)
+  // Land outside India is stored as plain "1": pins cannot go there, and
+  // leaving out its mountains makes the file much smaller.
+  if (metres > 0 && !nearIndia(x, y)) return [1, 0, 0]
+  const code =
+    metres <= 0 ? 0 : Math.min(255, Math.max(1, Math.round(Math.sqrt(metres) * HEIGHT_SCALE)))
+  return [code, 0, 0]
+}, { smooth: true })
+writeFileSync('public/map/india-heights.png', heightsPicture)
+console.log(
+  `wrote public/map/india-heights.png (${HEIGHTS_WIDE} x ${HEIGHTS_HIGH}, ${Math.round(heightsPicture.length / 1024)} KB)`,
+)
+
+// ---------------------------------------------------------------------------
 // Writing the outlines
 // ---------------------------------------------------------------------------
 
@@ -373,6 +422,10 @@ const out = {
   east: EAST,
   north: NORTH,
   south: SOUTH,
+  // How to read public/map/india-heights.png (see scripts/make-map.mjs).
+  heightsWidth: HEIGHTS_WIDE,
+  heightsHeight: HEIGHTS_HIGH,
+  heightScale: HEIGHT_SCALE,
   // The key: each height band's colour and what it means.
   key: BANDS.map(([, colour, label]) => ({
     colour: '#' + colour.map((part) => part.toString(16).padStart(2, '0')).join(''),
@@ -417,6 +470,9 @@ export const INDIA_MAP: {
   east: number
   north: number
   south: number
+  heightsWidth: number
+  heightsHeight: number
+  heightScale: number
   key: readonly { colour: string; label: string }[]
   outline: string
   states: readonly MapState[]

@@ -46,6 +46,7 @@ import {
   logPartyQuest,
   removePartyQuest,
 } from './game/party.ts'
+import { addPin, removePin, updatePin } from './game/pins.ts'
 import { applyPartnerCode } from './game/share.ts'
 import type { PartnerCodeResult } from './game/share.ts'
 import {
@@ -450,7 +451,17 @@ function App() {
           }
         />
       )}
-      {screen === 'map' && <MapScreen />}
+      {screen === 'map' && (
+        <MapScreen
+          save={save}
+          now={now}
+          onAddPin={(input) => commitIfChanged(addPin(save, input, new Date()))}
+          onUpdatePin={(pinId, changes) =>
+            commitIfChanged(updatePin(save, pinId, changes, new Date()))
+          }
+          onRemovePin={(pinId) => commitIfChanged(removePin(save, pinId))}
+        />
+      )}
       {screen === 'camp' && (
         <Camp
           save={save}

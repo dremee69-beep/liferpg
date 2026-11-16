@@ -24,6 +24,9 @@ export const INDIA_MAP: {
   east: number
   north: number
   south: number
+  heightsWidth: number
+  heightsHeight: number
+  heightScale: number
   key: readonly { colour: string; label: string }[]
   outline: string
   states: readonly MapState[]
@@ -34,6 +37,9 @@ export const INDIA_MAP: {
  "east": 98.2,
  "north": 37.9,
  "south": 5.9,
+ "heightsWidth": 1406,
+ "heightsHeight": 1597,
+ "heightScale": 2.7,
  "key": [
   {
    "colour": "#c9e6c9",

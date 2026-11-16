@@ -20,6 +20,8 @@ import {
   SHIELDS_AT_START,
   XP_SMALL,
 } from '../game/rules.ts'
+import { TERRAIN_TYPES } from '../game/geo.ts'
+import type { TerrainId } from '../game/geo.ts'
 import type { PlayerId, RealmId } from '../game/rules.ts'
 import { readPartnerSummary } from '../game/share.ts'
 import type { PartnerSummary } from '../game/share.ts'
@@ -37,7 +39,8 @@ import type { RealmXp } from '../game/xp.ts'
 //   Version 8: adds what the partner's last share code said.
 //   Version 9: adds party quests.
 //   Version 10: Together becomes pair-only; its dailies become party quests.
-export const SAVE_VERSION = 10
+//   Version 11: adds map pins.
+export const SAVE_VERSION = 11
 
 // The names (keys) our data is filed under in the browser's notebook.
 const SAVE_KEY = 'liferpg-save'
@@ -64,6 +67,24 @@ export type LogEntry = {
   // Set on the Together XP paid for a confirmed party quest. Both players
   // agreed on it, so the entry cannot be removed by hand.
   partyId?: string
+}
+
+// One pin on the map: a place the two of you visited together.
+export type Pin = {
+  id: string
+  name: string // what the player called the place
+  date: string // the day you went, as a day key like "2026-11-14"
+  bucketList: boolean // was it on your bucket list?
+  lon: number // where it is on the Earth
+  lat: number
+  stateId: string // the state it is in (an id from src/map/india.ts)...
+  stateName: string // ...and that state's name, copied in
+  metres: number // its height above the sea, to the nearest few tens of metres
+  terrain: TerrainId
+  by: PlayerId // who dropped the pin
+  // 'pending' until the partner confirms it (confirming arrives in a later
+  // update), then 'confirmed' or 'declined'.
+  state: 'pending' | 'confirmed' | 'declined'
 }
 
 // One party quest on the player's list: something you do as a pair.
@@ -208,6 +229,8 @@ export type SaveData = {
   // either player), oldest first.
   partyQuests: PartyQuest[]
   partyLogs: PartyLog[]
+  // The pins on the map.
+  pins: Pin[]
 }
 
 // A fresh copy of the starting party quests.
@@ -251,6 +274,7 @@ export function newSave(player: PlayerId): SaveData {
     partner: null,
     partyQuests: defaultPartyQuests(),
     partyLogs: [],
+    pins: [],
   }
 }
 
@@ -467,7 +491,55 @@ function migrate(data: Record<string, unknown>): Record<string, unknown> {
     }
   }
 
+  // Version 10 -> 11: map pins arrive. Nobody has any yet.
+  if (upgraded.version === 10) {
+    upgraded = { ...upgraded, version: 11, pins: [] }
+  }
+
   return upgraded
+}
+
+// Reads the list of map pins from loaded data, keeping only the ones that
+// look right.
+export function readPins(value: unknown): Pin[] {
+  const pins: Pin[] = []
+  if (!Array.isArray(value)) return pins
+  for (const item of value) {
+    if (
+      isObject(item) &&
+      typeof item.id === 'string' &&
+      typeof item.name === 'string' &&
+      isDayKey(item.date) &&
+      typeof item.lon === 'number' &&
+      Number.isFinite(item.lon) &&
+      typeof item.lat === 'number' &&
+      Number.isFinite(item.lat) &&
+      typeof item.stateId === 'string' &&
+      typeof item.stateName === 'string' &&
+      isXpNumber(item.metres) &&
+      TERRAIN_TYPES.some((terrain) => terrain.id === item.terrain) &&
+      isPlayerId(item.by) &&
+      (item.state === 'pending' ||
+        item.state === 'confirmed' ||
+        item.state === 'declined')
+    ) {
+      pins.push({
+        id: item.id,
+        name: item.name,
+        date: item.date,
+        bucketList: item.bucketList === true,
+        lon: item.lon,
+        lat: item.lat,
+        stateId: item.stateId,
+        stateName: item.stateName,
+        metres: item.metres,
+        terrain: item.terrain as TerrainId,
+        by: item.by,
+        state: item.state,
+      })
+    }
+  }
+  return pins
 }
 
 // Reads one epic quest from loaded data. Returns null if it is not usable.
@@ -743,6 +815,7 @@ export function parseSave(text: string): SaveData | null {
     partner: readPartnerSummary(data.partner),
     partyQuests,
     partyLogs,
+    pins: readPins(data.pins),
   }
 }
 

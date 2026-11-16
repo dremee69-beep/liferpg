@@ -1150,6 +1150,95 @@ h3 {
   pointer-events: none;
 }
 
+/* While a pin is being placed the cursor is a cross-hair. */
+.map-placing {
+  cursor: crosshair;
+}
+
+/* A pin: a coloured dot with a dark edge. Both are "lines" of no length
+   with thick round ends, so they stay the same size at every zoom. */
+.map-pin-edge,
+.map-pin {
+  fill: none;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.map-pin-edge {
+  stroke: var(--ink);
+  stroke-width: 16;
+}
+
+.map-pin {
+  stroke: #f5a8cf; /* Together pink */
+  stroke-width: 11;
+}
+
+/* The spot being pinned right now: bigger, and yellow. */
+.map-pin-edge-new {
+  stroke-width: 22;
+}
+
+.map-pin-new {
+  stroke: var(--sun);
+  stroke-width: 16;
+}
+
+/* "Step 1 of 2..." next to the Cancel button. */
+.map-step {
+  flex: 1;
+}
+
+/* What the app worked out about the spot: state, height, terrain. */
+.pin-facts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A tick box with its words beside it. */
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-weight: 700;
+}
+
+.check-row input {
+  width: 24px;
+  height: 24px;
+  accent-color: var(--ink);
+}
+
+/* One pin in the list: its details, then its buttons underneath. */
+.pin-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: var(--outline);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.pin-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.pin-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .map-controls {
   display: flex;
   align-items: flex-end;

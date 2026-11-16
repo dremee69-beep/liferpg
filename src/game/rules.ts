@@ -59,6 +59,12 @@ export const MAX_PARTY_QUEST_NAME_LENGTH = 40
 export const MAX_PARTY_LOGS = 200
 export const PARTY_LOGS_IN_CODE = 20
 
+// MAP PINS: places the two of you visited together.
+// A pin at or above this height is a "mountain destination".
+export const MOUNTAIN_METRES = 1500
+export const MAX_PINS = 200
+export const MAX_PIN_NAME_LENGTH = 40
+
 // Sensible limits for what can be typed into an epic quest.
 export const MAX_EPICS = 8
 export const MAX_MILESTONES = 15

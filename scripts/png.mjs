@@ -16,7 +16,10 @@ function chunk(type, data) {
 }
 
 // colourAt(x, y) must return [red, green, blue], each from 0 to 255.
-export function makePng(width, height, colourAt) {
+// Pass { smooth: true } for pictures whose neighbouring pixels are alike
+// (like a grid of heights): each row is then stored as its difference from
+// the row above, which squeezes much smaller. The picture looks the same.
+export function makePng(width, height, colourAt, { smooth = false } = {}) {
   // Each row of the image is: one "filter" byte (0), then 3 bytes per pixel.
   const rowBytes = 1 + width * 3
   const pixels = Buffer.alloc(rowBytes * height)
@@ -31,6 +34,19 @@ export function makePng(width, height, colourAt) {
     }
   }
 
+  if (smooth) {
+    // Work from the bottom row up, so each row is compared with the
+    // untouched row above it. Filter type 2 is PNG's name for this.
+    for (let y = height - 1; y >= 0; y--) {
+      const row = y * rowBytes
+      pixels[row] = 2
+      if (y === 0) continue // the top row has nothing above it
+      for (let i = 1; i < rowBytes; i++) {
+        pixels[row + i] = (pixels[row + i] - pixels[row - rowBytes + i]) & 255
+      }
+    }
+  }
+
   const header = Buffer.alloc(13)
   header.writeUInt32BE(width, 0)
   header.writeUInt32BE(height, 4)
@@ -40,7 +56,7 @@ export function makePng(width, height, colourAt) {
   return Buffer.concat([
     Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), // the PNG signature
     chunk('IHDR', header),
-    chunk('IDAT', deflateSync(pixels)),
+    chunk('IDAT', deflateSync(pixels, { level: 9 })),
     chunk('IEND', Buffer.alloc(0)),
   ])
 }
