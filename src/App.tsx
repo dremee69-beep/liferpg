@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Camp } from './components/Camp.tsx'
 import { CelebrationCard } from './components/CelebrationCard.tsx'
+import { History } from './components/History.tsx'
 import { PlayerPicker } from './components/PlayerPicker.tsx'
 import { QuestLog } from './components/QuestLog.tsx'
 import { TabBar } from './components/TabBar.tsx'
@@ -73,6 +74,8 @@ function App() {
   const [saveFailed, setSaveFailed] = useState(false)
   // Which screen is showing once a player exists.
   const [screen, setScreen] = useState<ScreenId>('village')
+  // History is opened from the Village and shown in its place.
+  const [historyOpen, setHistoryOpen] = useState(false)
 
   // The queue of celebration cards. The first one is the one on screen.
   const [celebrations, setCelebrations] = useState<Celebration[]>([])
@@ -167,6 +170,7 @@ function App() {
   // Switching tabs: show the new screen from its top.
   function handleChangeScreen(next: ScreenId) {
     setScreen(next)
+    setHistoryOpen(false) // tapping any tab leaves History
     setNow(new Date())
     window.scrollTo(0, 0)
   }
@@ -265,13 +269,27 @@ function App() {
         </p>
       )}
 
-      {screen === 'village' && (
+      {screen === 'village' && !historyOpen && (
         <Village
           save={save}
           now={now}
           onLog={handleLog}
           onDaily={handleDaily}
           onRemoveEntry={handleRemoveEntry}
+          onOpenHistory={() => {
+            setHistoryOpen(true)
+            window.scrollTo(0, 0)
+          }}
+        />
+      )}
+      {screen === 'village' && historyOpen && (
+        <History
+          save={save}
+          now={now}
+          onBack={() => {
+            setHistoryOpen(false)
+            window.scrollTo(0, 0)
+          }}
         />
       )}
       {screen === 'quests' && (

@@ -933,6 +933,78 @@ h3 {
   gap: 6px;
 }
 
+/* ---------- History ---------- */
+
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Title on the left, Back button on the right. */
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+/* The Days / Weeks / Quests switch: one pill cut into three. */
+.segments {
+  display: flex;
+  border: var(--outline);
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: var(--shadow-small);
+  overflow: hidden;
+}
+
+.segment {
+  flex: 1;
+  min-height: 48px;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.segment + .segment {
+  border-left: var(--outline);
+}
+
+.segment-current {
+  background: var(--sun);
+}
+
+.segment:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: -4px;
+}
+
+/* History rows have no Remove button, so they need a little more padding. */
+.history-item {
+  padding: 8px 12px;
+}
+
+.history-xp {
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-result {
+  margin-top: 0;
+}
+
+.history-tier {
+  font-weight: 600;
+}
+
 /* ---------- Tab bar at the bottom ---------- */
 
 .tabbar {

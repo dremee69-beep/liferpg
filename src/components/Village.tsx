@@ -16,9 +16,17 @@ type Props = {
   onLog: (realm: RealmId, xp: number) => void
   onDaily: (dailyId: string) => void
   onRemoveEntry: (index: number) => void
+  onOpenHistory: () => void
 }
 
-export function Village({ save, now, onLog, onDaily, onRemoveEntry }: Props) {
+export function Village({
+  save,
+  now,
+  onLog,
+  onDaily,
+  onRemoveEntry,
+  onOpenHistory,
+}: Props) {
   // Look up the display name for the saved player id.
   const player = PLAYERS.find((p) => p.id === save.player)
 
@@ -49,7 +57,12 @@ export function Village({ save, now, onLog, onDaily, onRemoveEntry }: Props) {
         />
       ))}
 
-      <ActivityLog save={save} now={now} onRemove={onRemoveEntry} />
+      <ActivityLog
+        save={save}
+        now={now}
+        onRemove={onRemoveEntry}
+        onOpenHistory={onOpenHistory}
+      />
     </main>
   )
 }

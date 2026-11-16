@@ -20,7 +20,12 @@ import {
   TIER_REWARD_XP,
 } from './rules.ts'
 import type { RealmId } from './rules.ts'
-import type { Challenge, ChallengeTier, SaveData } from '../storage/save.ts'
+import type {
+  Challenge,
+  ChallengeTier,
+  SaveData,
+  WeekOutcome,
+} from '../storage/save.ts'
 
 // What the player fills in to create a challenge.
 export type ChallengeInput = {
@@ -229,6 +234,8 @@ export function settleChallenges(
   const realmXp = { ...save.realmXp }
   const skillPoints = { ...save.skillPoints }
   const log = [...save.log]
+  const weekResults = [...save.weekResults]
+  const finishedTiers = [...save.finishedTiers]
   let changed = false
 
   let shields = save.shields
@@ -250,6 +257,13 @@ export function settleChallenges(
         xp: TIER_REWARD_XP,
         at: now.toISOString(),
         challengeId: challenge.id,
+      })
+      finishedTiers.push({
+        challengeId: challenge.id,
+        challengeName: challenge.name,
+        tierName: tier.name,
+        realm: challenge.realm,
+        at: now.toISOString(),
       })
       challenge.tierIndex += 1
       challenge.weeksDone = 0
@@ -305,10 +319,13 @@ export function settleChallenges(
     if (pick === null) break // everything is up to date
 
     const { challenge, week, onTarget } = pick
+    const tier = challenge.tiers[challenge.tierIndex]
+    let outcome: WeekOutcome = 'missed'
     challenge.lastCountedWeek = week
     changed = true
 
     if (onTarget) {
+      outcome = 'onTarget'
       // Target reached: the week counts (even if it is still this week),
       // and it earns a shield, unless the player already holds the most.
       challenge.weeksDone += 1
@@ -316,7 +333,9 @@ export function settleChallenges(
     } else if (week === challenge.startedWeek || week < save.shieldsFrom) {
       // A free pass: the part-week the challenge was created in, or a week
       // from before shields existed. It does not count and costs nothing.
+      outcome = 'free'
     } else if (shields > 0) {
+      outcome = 'shielded'
       // A missed week, and there is a shield: it is used, and the week
       // counts as done. A note goes in the log so you can look back at it.
       shields -= 1
@@ -338,12 +357,31 @@ export function settleChallenges(
     // Otherwise: a missed week and no shield. It does not count, so the
     // tier needs one more week. Nothing already earned is taken away.
 
+    // Write the result down, so the History screen can show it later.
+    weekResults.push({
+      challengeId: challenge.id,
+      challengeName: challenge.name,
+      tierName: tier.name,
+      realm: challenge.realm,
+      week,
+      outcome,
+    })
+
     finishFullTiers(challenge)
   }
 
   if (!changed) return { save, completed, shieldsUsed }
   return {
-    save: { ...save, realmXp, skillPoints, log, challenges, shields },
+    save: {
+      ...save,
+      realmXp,
+      skillPoints,
+      log,
+      challenges,
+      shields,
+      weekResults,
+      finishedTiers,
+    },
     completed,
     shieldsUsed,
   }

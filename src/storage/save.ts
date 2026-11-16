@@ -26,7 +26,8 @@ import type { RealmXp } from '../game/xp.ts'
 //   Version 3: each daily quest has its own XP size (10 or 25).
 //   Version 4: adds the player's challenges and their skill points.
 //   Version 5: adds shields.
-export const SAVE_VERSION = 5
+//   Version 6: adds the history of challenge weeks and finished tiers.
+export const SAVE_VERSION = 6
 
 // The names (keys) our data is filed under in the browser's notebook.
 const SAVE_KEY = 'liferpg-save'
@@ -78,6 +79,35 @@ export type Challenge = {
   startedWeek: string
 }
 
+// How one week of a challenge turned out:
+//   'onTarget' the weekly target was reached;
+//   'shielded' it was missed, and a shield covered it;
+//   'missed'   it was missed with no shield, so it has to be done again;
+//   'free'     a missed week that cost nothing (the part-week a challenge
+//              started in, or a week from before shields existed).
+export type WeekOutcome = 'onTarget' | 'shielded' | 'missed' | 'free'
+
+// One line of history: how one week of one challenge turned out. The names
+// are copied in, so the line still reads properly if the challenge is later
+// renamed or removed.
+export type WeekResult = {
+  challengeId: string
+  challengeName: string
+  tierName: string
+  realm: RealmId
+  week: string // a week key: its Monday
+  outcome: WeekOutcome
+}
+
+// One line of history: a challenge tier that was finished.
+export type FinishedTier = {
+  challengeId: string
+  challengeName: string
+  tierName: string
+  realm: RealmId
+  at: string // when it was finished (ISO date text)
+}
+
 // One daily quest: a repeatable action that can be ticked once a day.
 // `xp` is what ticking it is worth: 10 (small) or 25 (big).
 export type Daily = {
@@ -104,6 +134,10 @@ export type SaveData = {
   // Empty text means "every week". Saves that were upgraded get the week of
   // the upgrade here, so weeks missed before shields existed cost nothing.
   shieldsFrom: string
+  // HISTORY, oldest first. These are only for looking back: the game never
+  // reads them to decide anything.
+  weekResults: WeekResult[]
+  finishedTiers: FinishedTier[]
 }
 
 // Every realm at zero: used for fresh XP and fresh skill points.
@@ -135,6 +169,8 @@ export function newSave(player: PlayerId): SaveData {
     skillPoints: zeroPerRealm(),
     shields: SHIELDS_AT_START,
     shieldsFrom: '',
+    weekResults: [],
+    finishedTiers: [],
   }
 }
 
@@ -248,7 +284,52 @@ function migrate(data: Record<string, unknown>): Record<string, unknown> {
     }
   }
 
+  // Version 5 -> 6: history arrives. Week results were not written down
+  // before, so that list starts empty. Finished tiers can be rebuilt from
+  // the reward entries in the log: a challenge's first reward was for its
+  // first tier, its second reward for its second tier, and so on.
+  if (upgraded.version === 5) {
+    const finishedTiers: unknown[] = []
+    const rewardsSoFar = new Map<string, number>()
+    const challenges: unknown[] = Array.isArray(upgraded.challenges)
+      ? upgraded.challenges
+      : []
+    const log: unknown[] = Array.isArray(upgraded.log) ? upgraded.log : []
+    for (const entry of log) {
+      if (!isObject(entry) || typeof entry.challengeId !== 'string') continue
+      if (entry.shield === true) continue // a shield note, not a reward
+      const challengeId = entry.challengeId
+      const challenge = challenges.find(
+        (c) => isObject(c) && c.id === challengeId,
+      )
+      if (!isObject(challenge)) continue // the challenge was removed since
+      const tierIndex = rewardsSoFar.get(challengeId) ?? 0
+      rewardsSoFar.set(challengeId, tierIndex + 1)
+      const tier: unknown = Array.isArray(challenge.tiers)
+        ? challenge.tiers[tierIndex]
+        : null
+      finishedTiers.push({
+        challengeId,
+        challengeName: challenge.name,
+        tierName: isObject(tier) ? tier.name : `Tier ${tierIndex + 1}`,
+        realm: challenge.realm,
+        at: entry.at,
+      })
+    }
+    upgraded = { ...upgraded, version: 6, weekResults: [], finishedTiers }
+  }
+
   return upgraded
+}
+
+// Is this one of the four ways a challenge week can turn out?
+function isWeekOutcome(value: unknown): value is WeekOutcome {
+  return (
+    value === 'onTarget' ||
+    value === 'shielded' ||
+    value === 'missed' ||
+    value === 'free'
+  )
 }
 
 // Turns save-file text into SaveData. Returns null if the text is not a save
@@ -344,6 +425,52 @@ export function parseSave(text: string): SaveData | null {
     skillPoints[realm.id] = value
   }
 
+  // History: keep the lines that look right.
+  const weekResults: WeekResult[] = []
+  if (Array.isArray(data.weekResults)) {
+    for (const value of data.weekResults) {
+      if (
+        isObject(value) &&
+        typeof value.challengeId === 'string' &&
+        typeof value.challengeName === 'string' &&
+        typeof value.tierName === 'string' &&
+        isRealmId(value.realm) &&
+        isDayKey(value.week) &&
+        isWeekOutcome(value.outcome)
+      ) {
+        weekResults.push({
+          challengeId: value.challengeId,
+          challengeName: value.challengeName,
+          tierName: value.tierName,
+          realm: value.realm,
+          week: value.week,
+          outcome: value.outcome,
+        })
+      }
+    }
+  }
+  const finishedTiers: FinishedTier[] = []
+  if (Array.isArray(data.finishedTiers)) {
+    for (const value of data.finishedTiers) {
+      if (
+        isObject(value) &&
+        typeof value.challengeId === 'string' &&
+        typeof value.challengeName === 'string' &&
+        typeof value.tierName === 'string' &&
+        isRealmId(value.realm) &&
+        typeof value.at === 'string'
+      ) {
+        finishedTiers.push({
+          challengeId: value.challengeId,
+          challengeName: value.challengeName,
+          tierName: value.tierName,
+          realm: value.realm,
+          at: value.at,
+        })
+      }
+    }
+  }
+
   return {
     version: SAVE_VERSION,
     player: data.player,
@@ -358,6 +485,8 @@ export function parseSave(text: string): SaveData | null {
       ? Math.min(data.shields, MAX_SHIELDS)
       : SHIELDS_AT_START,
     shieldsFrom: isDayKey(data.shieldsFrom) ? data.shieldsFrom : '',
+    weekResults,
+    finishedTiers,
   }
 }
 

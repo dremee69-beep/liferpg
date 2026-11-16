@@ -3,6 +3,7 @@
 
 import { useState } from 'react'
 import { dayKey } from '../game/dates.ts'
+import { describeEntry } from '../game/history.ts'
 import { REALMS } from '../game/rules.ts'
 import type { LogEntry, SaveData } from '../storage/save.ts'
 import { ConfirmButton } from './ConfirmButton.tsx'
@@ -13,28 +14,11 @@ type Props = {
   now: Date
   // `index` is the entry's position in save.log.
   onRemove: (index: number) => void
+  onOpenHistory: () => void
 }
 
 // How many entries to show at first, and how many more per "Show more" tap.
 const PAGE_SIZE = 8
-
-// What an entry was: the daily's name, or a plain logged action.
-function describe(entry: LogEntry, save: SaveData): string {
-  // Bonus XP for finishing a challenge tier.
-  if (entry.challengeId !== undefined) {
-    const challenge = save.challenges.find((c) => c.id === entry.challengeId)
-    // A note that a shield covered a missed week.
-    if (entry.shield === true) {
-      return challenge ? `Shield used: ${challenge.name}` : 'Shield used'
-    }
-    return challenge ? `Tier complete: ${challenge.name}` : 'Challenge tier complete'
-  }
-  if (entry.dailyId !== undefined) {
-    const daily = save.dailies.find((d) => d.id === entry.dailyId)
-    return daily?.name ?? 'Daily quest'
-  }
-  return 'Logged action'
-}
 
 // Just the time for today's entries, "12 Nov, 6:52 pm" for older ones.
 function describeTime(entry: LogEntry, now: Date): string {
@@ -45,7 +29,7 @@ function describeTime(entry: LogEntry, now: Date): string {
   return `${date}, ${time}`
 }
 
-export function ActivityLog({ save, now, onRemove }: Props) {
+export function ActivityLog({ save, now, onRemove, onOpenHistory }: Props) {
   const [shown, setShown] = useState(PAGE_SIZE)
 
   // Pair every entry with its position, then put the newest first.
@@ -56,7 +40,13 @@ export function ActivityLog({ save, now, onRemove }: Props) {
 
   return (
     <section className="panel activity">
-      <h2>Recent activity</h2>
+      <div className="panel-top">
+        <h2>Recent activity</h2>
+        {/* Opens the History screen: every day, week and finished quest. */}
+        <button type="button" className="link-button" onClick={onOpenHistory}>
+          History
+        </button>
+      </div>
 
       {newestFirst.length === 0 ? (
         <p className="panel-text">
@@ -80,7 +70,7 @@ export function ActivityLog({ save, now, onRemove }: Props) {
                   size={24}
                 />
                 <div className="activity-text">
-                  <span className="activity-what">{describe(entry, save)}</span>
+                  <span className="activity-what">{describeEntry(entry, save)}</span>
                   <span className="activity-meta">
                     {realm?.name} ·{' '}
                     {entry.shield === true
