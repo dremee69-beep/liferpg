@@ -23,6 +23,10 @@ function describe(entry: LogEntry, save: SaveData): string {
   // Bonus XP for finishing a challenge tier.
   if (entry.challengeId !== undefined) {
     const challenge = save.challenges.find((c) => c.id === entry.challengeId)
+    // A note that a shield covered a missed week.
+    if (entry.shield === true) {
+      return challenge ? `Shield used: ${challenge.name}` : 'Shield used'
+    }
     return challenge ? `Tier complete: ${challenge.name}` : 'Challenge tier complete'
   }
   if (entry.dailyId !== undefined) {
@@ -71,18 +75,28 @@ export function ActivityLog({ save, now, onRemove }: Props) {
                 className="activity-item"
                 data-realm={entry.realm}
               >
-                <PixelIcon name={entry.realm} size={24} />
+                <PixelIcon
+                  name={entry.shield === true ? 'shield' : entry.realm}
+                  size={24}
+                />
                 <div className="activity-text">
                   <span className="activity-what">{describe(entry, save)}</span>
                   <span className="activity-meta">
-                    {realm?.name} · +{entry.xp} XP · {describeTime(entry, now)}
+                    {realm?.name} ·{' '}
+                    {entry.shield === true
+                      ? 'covered a missed week'
+                      : `+${entry.xp} XP`}{' '}
+                    · {describeTime(entry, now)}
                   </span>
                 </div>
                 {entry.challengeId === undefined ? (
                   <ConfirmButton label="Remove" onConfirm={() => onRemove(index)} />
                 ) : (
-                  // A tier reward belongs to the finished tier, so it stays.
-                  <span className="activity-reward">Reward</span>
+                  // Tier rewards and shield notes belong to the challenge,
+                  // so they stay.
+                  <span className="activity-reward">
+                    {entry.shield === true ? 'Shield' : 'Reward'}
+                  </span>
                 )}
               </li>
             )

@@ -30,6 +30,11 @@ export const MAX_DAILY_NAME_LENGTH = 60
 export const TIER_REWARD_XP = 50
 export const TIER_REWARD_SKILL_POINTS = 1
 
+// SHIELDS: a missed challenge week uses one shield by itself, and the week
+// then counts as done. Every week finished on target earns one back.
+export const SHIELDS_AT_START = 1 // what a new player begins with
+export const MAX_SHIELDS = 2 // the most a player can hold
+
 // Sensible limits for what can be typed into a challenge.
 export const MAX_CHALLENGES = 12
 export const MAX_TIERS = 10

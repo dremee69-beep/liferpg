@@ -107,6 +107,24 @@ export const ICONS = {
     '............',
   ],
 
+  // ----- Other -----
+
+  // A shield: covers a missed challenge week
+  shield: [
+    '............',
+    '.KKKKKKKKKK.',
+    '.KbbbbBBBBK.',
+    '.KbWbbBBBBK.',
+    '.KbbbbBBBBK.',
+    '.KbbbbBBBBK.',
+    '.KbbbbBBBBK.',
+    '..KbbbBBBK..',
+    '..KbbbBBBK..',
+    '...KbbBBK...',
+    '....KbBK....',
+    '.....KK.....',
+  ],
+
   // ----- Tabs -----
 
   // Village: the little house from the app icon

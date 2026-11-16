@@ -22,7 +22,7 @@ import {
   settleChallenges,
   updateChallenge,
 } from './game/challenges.ts'
-import type { TierCompletion } from './game/challenges.ts'
+import type { ShieldUse, TierCompletion } from './game/challenges.ts'
 import {
   addDaily,
   removeDaily,
@@ -30,6 +30,7 @@ import {
   setDailyXp,
 } from './game/dailies.ts'
 import {
+  MAX_SHIELDS,
   REALMS,
   TIER_REWARD_SKILL_POINTS,
   TIER_REWARD_XP,
@@ -57,6 +58,7 @@ type Notice = {
 type CelebrationContent =
   | { kind: 'level'; realm: RealmId; level: number }
   | { kind: 'tier'; done: TierCompletion }
+  | { kind: 'shield'; used: ShieldUse }
 // Once queued, each card also gets a number of its own.
 type Celebration = CelebrationContent & { id: number }
 
@@ -130,6 +132,10 @@ function App() {
     // A finished tier gets a card. If its 50 bonus XP also pushed the realm
     // up a level, that gets a card too, straight after.
     const cards: CelebrationContent[] = []
+    // A shield that covered a missed week is announced first.
+    for (const used of settled.shieldsUsed) {
+      cards.push({ kind: 'shield', used })
+    }
     for (const done of settled.completed) {
       cards.push({ kind: 'tier', done })
       const levelBefore = levelForXp(next.realmXp[done.realm])
@@ -329,6 +335,24 @@ function App() {
           </span>
           <span className="celebration-chip">
             +{TIER_REWARD_XP} XP · +{TIER_REWARD_SKILL_POINTS} skill point
+          </span>
+        </CelebrationCard>
+      )}
+
+      {card !== undefined && card.kind === 'shield' && (
+        <CelebrationCard
+          key={card.id}
+          realm={card.used.realm}
+          icon="shield"
+          title="Shield used"
+          onClose={closeCelebration}
+        >
+          <span className="celebration-line">
+            A shield covered a missed week in{' '}
+            <strong>{card.used.challengeName}</strong>
+          </span>
+          <span className="celebration-chip">
+            {save.shields} of {MAX_SHIELDS} shields left
           </span>
         </CelebrationCard>
       )}

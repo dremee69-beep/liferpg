@@ -5,11 +5,13 @@
 
 import { useEffect } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
+import type { IconName } from '../art/icons.ts'
 import type { RealmId } from '../game/rules.ts'
 import { PixelIcon } from './PixelIcon.tsx'
 
 type Props = {
   realm: RealmId // decides the icon and the colour
+  icon?: IconName // a different icon to show instead of the realm's
   title: string // the big line, e.g. "Level up!"
   children: ReactNode // the smaller lines underneath
   onClose: () => void
@@ -33,7 +35,13 @@ const SPARKLES = [
   { x: 0, y: 105 },
 ]
 
-export function CelebrationCard({ realm, title, children, onClose }: Props) {
+export function CelebrationCard({
+  realm,
+  icon,
+  title,
+  children,
+  onClose,
+}: Props) {
   // Close by itself after a short while.
   useEffect(() => {
     const timer = setTimeout(onClose, SHOW_MS)
@@ -65,7 +73,7 @@ export function CelebrationCard({ realm, title, children, onClose }: Props) {
         </span>
 
         <span className="celebration-icon">
-          <PixelIcon name={realm} size={72} />
+          <PixelIcon name={icon ?? realm} size={72} />
         </span>
         <span className="celebration-title">{title}</span>
         {children}

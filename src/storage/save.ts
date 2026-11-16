@@ -6,12 +6,14 @@
 // browser keeps for this app, on this device only. It stores text, so we turn
 // the save into text (JSON) when writing and back into data when reading.
 
-import { dayKey } from '../game/dates.ts'
+import { dayKey, weekKey } from '../game/dates.ts'
 import {
   DEFAULT_DAILIES,
   isDailyXp,
+  MAX_SHIELDS,
   PLAYERS,
   REALMS,
+  SHIELDS_AT_START,
   XP_SMALL,
 } from '../game/rules.ts'
 import type { PlayerId, RealmId } from '../game/rules.ts'
@@ -23,7 +25,8 @@ import type { RealmXp } from '../game/xp.ts'
 //   Version 2: adds the player's list of daily quests.
 //   Version 3: each daily quest has its own XP size (10 or 25).
 //   Version 4: adds the player's challenges and their skill points.
-export const SAVE_VERSION = 4
+//   Version 5: adds shields.
+export const SAVE_VERSION = 5
 
 // The names (keys) our data is filed under in the browser's notebook.
 const SAVE_KEY = 'liferpg-save'
@@ -41,6 +44,9 @@ export type LogEntry = {
   // entries are not something the player did, so they never count as
   // activity and cannot be removed by hand.
   challengeId?: string
+  // Set (together with challengeId) on the note left when a shield covered
+  // a missed week. It is worth 0 XP; it is only there so you can look back.
+  shield?: true
 }
 
 // One tier of a challenge: "do it `daysPerWeek` days a week, for `weeks` weeks".
@@ -92,6 +98,12 @@ export type SaveData = {
   // Skill points earned in each realm (one per finished challenge tier).
   // They will be spent in the skill trees and reward shop later.
   skillPoints: RealmXp
+  // How many shields the player holds right now (0 to MAX_SHIELDS).
+  shields: number
+  // Shields only look after weeks from this one on (a week key: its Monday).
+  // Empty text means "every week". Saves that were upgraded get the week of
+  // the upgrade here, so weeks missed before shields existed cost nothing.
+  shieldsFrom: string
 }
 
 // Every realm at zero: used for fresh XP and fresh skill points.
@@ -121,6 +133,8 @@ export function newSave(player: PlayerId): SaveData {
     dailies: defaultDailies(),
     challenges: [],
     skillPoints: zeroPerRealm(),
+    shields: SHIELDS_AT_START,
+    shieldsFrom: '',
   }
 }
 
@@ -222,6 +236,18 @@ function migrate(data: Record<string, unknown>): Record<string, unknown> {
     }
   }
 
+  // Version 4 -> 5: shields arrive. Everyone gets the starting shield, and
+  // shields begin with the current week: weeks missed before this update
+  // are not charged.
+  if (upgraded.version === 4) {
+    upgraded = {
+      ...upgraded,
+      version: 5,
+      shields: SHIELDS_AT_START,
+      shieldsFrom: weekKey(new Date()),
+    }
+  }
+
   return upgraded
 }
 
@@ -271,6 +297,7 @@ export function parseSave(text: string): SaveData | null {
         if (typeof entry.dailyId === 'string') logEntry.dailyId = entry.dailyId
         if (typeof entry.challengeId === 'string') {
           logEntry.challengeId = entry.challengeId
+          if (entry.shield === true) logEntry.shield = true
         }
         log.push(logEntry)
       }
@@ -325,6 +352,12 @@ export function parseSave(text: string): SaveData | null {
     dailies,
     challenges,
     skillPoints,
+    // Never more than the most a player can hold. A value we cannot read
+    // falls back to the starting amount.
+    shields: isCount(data.shields)
+      ? Math.min(data.shields, MAX_SHIELDS)
+      : SHIELDS_AT_START,
+    shieldsFrom: isDayKey(data.shieldsFrom) ? data.shieldsFrom : '',
   }
 }
 

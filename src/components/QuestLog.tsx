@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { canAddChallenge, challengeView } from '../game/challenges.ts'
 import type { ChallengeInput } from '../game/challenges.ts'
 import { dailyStatuses } from '../game/dailies.ts'
-import { REALMS } from '../game/rules.ts'
+import { MAX_SHIELDS, REALMS } from '../game/rules.ts'
 import type { RealmId } from '../game/rules.ts'
 import type { ChallengeTier, SaveData } from '../storage/save.ts'
 import { ChallengeCard } from './ChallengeCard.tsx'
@@ -115,16 +115,32 @@ export function QuestLog({
       <section className="panel">
         <div className="panel-top">
           <h2>Challenges</h2>
-          <span className="points-chip">
-            {skillPoints} skill {skillPoints === 1 ? 'point' : 'points'}
+          <span className="chips">
+            <span className="points-chip shield-chip">
+              <PixelIcon name="shield" size={12} />
+              {save.shields} of {MAX_SHIELDS} shields
+            </span>
+            <span className="points-chip">
+              {skillPoints} skill {skillPoints === 1 ? 'point' : 'points'}
+            </span>
           </span>
         </div>
+
+        {save.challenges.length > 0 && (
+          <p className="panel-text shield-note">
+            {save.shields > 0
+              ? 'A missed week uses a shield by itself, and the week still counts.'
+              : 'No shields left: a missed week will have to be done again.'}{' '}
+            Every week on target earns a shield.
+          </p>
+        )}
 
         {save.challenges.length === 0 && challengeForm === 'closed' && (
           <p className="panel-text">
             A challenge is a chain of tiers with a weekly target, like "3 days
             a week for 2 weeks". The app counts your days from what you log.
-            Finishing a tier gives 50 XP and 1 skill point.
+            Finishing a tier gives 50 XP and 1 skill point. If you miss a
+            week, a shield covers it.
           </p>
         )}
 

@@ -618,6 +618,25 @@ p {
   font-variant-numeric: tabular-nums;
 }
 
+/* The shield and skill-point chips sit side by side, and wrap onto a second
+   line on a narrow phone. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.shield-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.shield-note {
+  font-size: 0.875rem;
+}
+
 .challenge {
   display: flex;
   flex-direction: column;

@@ -13,6 +13,7 @@ import { addWeeks, dayKey, daysLeftInWeek, weekKey } from './dates.ts'
 import {
   MAX_CHALLENGE_NAME_LENGTH,
   MAX_CHALLENGES,
+  MAX_SHIELDS,
   MAX_TIER_WEEKS,
   MAX_TIERS,
   TIER_REWARD_SKILL_POINTS,
@@ -37,6 +38,14 @@ export type TierCompletion = {
   tierName: string
   tierNumber: number // 1 for the first tier
   allTiersDone: boolean
+}
+
+// Told to the screen when a shield has just covered a missed week.
+export type ShieldUse = {
+  challengeId: string
+  challengeName: string
+  realm: RealmId
+  week: string // the missed week (its Monday)
 }
 
 // ---------------------------------------------------------------------------
@@ -199,7 +208,9 @@ export function activeDaysInWeek(
 
 // Looks at every challenge and brings it up to date:
 //   - a week where the target was reached is counted, the moment it is reached;
-//   - a past week that fell short is skipped (it simply does not count);
+//     it also earns a shield;
+//   - a past week that fell short uses a shield and counts anyway; with no
+//     shield left it simply does not count, and has to be done again;
 //   - when a tier has all its weeks, the reward is paid and the next tier opens.
 // Once a week has been counted it stays counted, even if a log entry from
 // that week is removed later.
@@ -209,9 +220,10 @@ export function activeDaysInWeek(
 export function settleChallenges(
   save: SaveData,
   now: Date,
-): { save: SaveData; completed: TierCompletion[] } {
+): { save: SaveData; completed: TierCompletion[]; shieldsUsed: ShieldUse[] } {
   const thisWeek = weekKey(now)
   const completed: TierCompletion[] = []
+  const shieldsUsed: ShieldUse[] = []
 
   // Working copies that we are free to change.
   const realmXp = { ...save.realmXp }
@@ -219,11 +231,17 @@ export function settleChallenges(
   const log = [...save.log]
   let changed = false
 
-  const challenges = save.challenges.map((original) => {
-    const challenge = { ...original }
+  let shields = save.shields
+  const challenges = save.challenges.map((original) => ({ ...original }))
 
-    // Pay the reward for the tier in progress and move to the next tier.
-    function finishTier() {
+  // While the tier in progress has all its weeks: pay its reward and move
+  // to the next tier. (Also catches a tier that was edited to need fewer
+  // weeks than are already done.)
+  function finishFullTiers(challenge: Challenge) {
+    while (
+      challenge.tierIndex < challenge.tiers.length &&
+      challenge.weeksDone >= challenge.tiers[challenge.tierIndex].weeks
+    ) {
       const tier = challenge.tiers[challenge.tierIndex]
       realmXp[challenge.realm] += TIER_REWARD_XP
       skillPoints[challenge.realm] += TIER_REWARD_SKILL_POINTS
@@ -245,47 +263,89 @@ export function settleChallenges(
       })
       changed = true
     }
+  }
 
-    // Walk forward one week at a time until we reach a week that is still
-    // in progress. The counter is only a safety stop for very old saves.
-    for (let step = 0; step < 1000; step++) {
-      if (challenge.tierIndex >= challenge.tiers.length) break // all done
-      const tier = challenge.tiers[challenge.tierIndex]
+  // The next week whose result can be recorded for a challenge, and whether
+  // the target was reached in it. Null when there is nothing to record yet.
+  function nextWeekToRecord(
+    challenge: Challenge,
+  ): { week: string; onTarget: boolean } | null {
+    if (challenge.tierIndex >= challenge.tiers.length) return null // all done
+    const week = addWeeks(challenge.lastCountedWeek, 1)
+    if (week > thisWeek) return null // nothing new to look at yet
 
-      // If the tier was edited to need fewer weeks than are already done,
-      // it is finished right now.
-      if (challenge.weeksDone >= tier.weeks) {
-        finishTier()
-        continue
-      }
+    const tier = challenge.tiers[challenge.tierIndex]
+    const onTarget = activeDaysInWeek(save, challenge, week) >= tier.daysPerWeek
+    // This week, target not reached yet: wait and see.
+    if (!onTarget && week === thisWeek) return null
+    return { week, onTarget }
+  }
 
-      const week = addWeeks(challenge.lastCountedWeek, 1)
-      if (week > thisWeek) break // nothing new to look at yet
+  for (const challenge of challenges) finishFullTiers(challenge)
 
-      const days = activeDaysInWeek(save, challenge, week)
-      if (days >= tier.daysPerWeek) {
-        // Target reached: count the week (even if it is still this week).
-        challenge.weeksDone += 1
-        challenge.lastCountedWeek = week
-        changed = true
-        if (challenge.weeksDone >= tier.weeks) finishTier()
-      } else if (week < thisWeek) {
-        // A past week that fell short: it does not count, and we move on.
-        // (Shields will soften this in a later update.)
-        challenge.lastCountedWeek = week
-        changed = true
-      } else {
-        break // this week, target not reached yet: wait
+  // Record one week of one challenge at a time, OLDEST WEEK FIRST across
+  // all challenges, so a shield earned in one week can cover a miss in a
+  // later one. Inside the same week, weeks on target go first (shields are
+  // earned before they are spent), then the order of the player's list.
+  // The counter is only a safety stop for very old saves.
+  for (let step = 0; step < 10_000; step++) {
+    let pick: { challenge: Challenge; week: string; onTarget: boolean } | null =
+      null
+    for (const challenge of challenges) {
+      const next = nextWeekToRecord(challenge)
+      if (next === null) continue
+      if (
+        pick === null ||
+        next.week < pick.week ||
+        (next.week === pick.week && next.onTarget && !pick.onTarget)
+      ) {
+        pick = { challenge, ...next }
       }
     }
+    if (pick === null) break // everything is up to date
 
-    return challenge
-  })
+    const { challenge, week, onTarget } = pick
+    challenge.lastCountedWeek = week
+    changed = true
 
-  if (!changed) return { save, completed }
+    if (onTarget) {
+      // Target reached: the week counts (even if it is still this week),
+      // and it earns a shield, unless the player already holds the most.
+      challenge.weeksDone += 1
+      shields = Math.min(MAX_SHIELDS, shields + 1)
+    } else if (week === challenge.startedWeek || week < save.shieldsFrom) {
+      // A free pass: the part-week the challenge was created in, or a week
+      // from before shields existed. It does not count and costs nothing.
+    } else if (shields > 0) {
+      // A missed week, and there is a shield: it is used, and the week
+      // counts as done. A note goes in the log so you can look back at it.
+      shields -= 1
+      challenge.weeksDone += 1
+      log.push({
+        realm: challenge.realm,
+        xp: 0,
+        at: now.toISOString(),
+        challengeId: challenge.id,
+        shield: true,
+      })
+      shieldsUsed.push({
+        challengeId: challenge.id,
+        challengeName: challenge.name,
+        realm: challenge.realm,
+        week,
+      })
+    }
+    // Otherwise: a missed week and no shield. It does not count, so the
+    // tier needs one more week. Nothing already earned is taken away.
+
+    finishFullTiers(challenge)
+  }
+
+  if (!changed) return { save, completed, shieldsUsed }
   return {
-    save: { ...save, realmXp, skillPoints, log, challenges },
+    save: { ...save, realmXp, skillPoints, log, challenges, shields },
     completed,
+    shieldsUsed,
   }
 }
 

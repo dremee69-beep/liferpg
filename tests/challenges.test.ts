@@ -272,8 +272,9 @@ test('the next tier starts counting from the following week', () => {
   assert.equal(save.challenges[0].weeksDone, 1)
 })
 
-test('a missed week does not count, and nothing is lost or reset', () => {
+test('with no shield, a missed week does not count, and nothing is lost or reset', () => {
   let save = settle(workOutOn(startChallenge(), 9, 10, 11), nov(11)) // week 1: on target
+  save = { ...save, shields: 0 } // pretend the shields are already used up
   save = workOutOn(save, 16) // week 2: only 1 day
 
   save = settle(save, nov(23)) // looked at on the Monday after
@@ -312,8 +313,12 @@ test('coming back after months away catches up without trouble', () => {
   const muchLater = new Date(2027, 5, 16, 9, 0) // Wednesday 16 June 2027
 
   save = settle(save, muchLater)
-  assert.equal(save.challenges[0].weeksDone, 1) // kept
-  assert.equal(save.challenges[0].tierIndex, 0)
+  // Week 1 earned a second shield. The two shields covered the first two
+  // missed weeks: one finished tier 1, one counted towards tier 2. After
+  // that the shields were gone and the missed weeks simply did not count.
+  assert.equal(save.shields, 0)
+  assert.equal(save.challenges[0].tierIndex, 1)
+  assert.equal(save.challenges[0].weeksDone, 1)
   assert.equal(save.challenges[0].lastCountedWeek, '2027-06-07') // last full week
 })
 
