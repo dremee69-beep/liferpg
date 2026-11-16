@@ -11,6 +11,9 @@ import {
   DEFAULT_DAILIES,
   DEFAULT_PARTY_QUESTS,
   isDailyXp,
+  MAX_PARTY_QUEST_NAME_LENGTH,
+  MAX_PARTY_QUESTS,
+  PAIR_REALM,
   MAX_SHIELDS,
   PLAYERS,
   REALMS,
@@ -33,7 +36,8 @@ import type { RealmXp } from '../game/xp.ts'
 //   Version 7: adds epic quests and their finished milestones.
 //   Version 8: adds what the partner's last share code said.
 //   Version 9: adds party quests.
-export const SAVE_VERSION = 9
+//   Version 10: Together becomes pair-only; its dailies become party quests.
+export const SAVE_VERSION = 10
 
 // The names (keys) our data is filed under in the browser's notebook.
 const SAVE_KEY = 'liferpg-save'
@@ -414,6 +418,52 @@ function migrate(data: Record<string, unknown>): Record<string, unknown> {
       version: 9,
       partyQuests: defaultPartyQuests(),
       partyLogs: [],
+    }
+  }
+
+  // Version 9 -> 10: Together becomes the pair-only realm. Its dailies are
+  // not thrown away: each one becomes a party quest (unless a party quest
+  // with that name is already there, or the list is full). Challenges that
+  // counted one of those dailies now count any confirmed party quest.
+  // Together XP and everything already logged are kept as they were.
+  if (upgraded.version === 9) {
+    const dailies: unknown[] = Array.isArray(upgraded.dailies) ? upgraded.dailies : []
+    const partyQuests: unknown[] = Array.isArray(upgraded.partyQuests)
+      ? [...upgraded.partyQuests]
+      : []
+    const movedIds = new Set<unknown>()
+
+    for (const daily of dailies) {
+      if (!isObject(daily) || daily.realm !== PAIR_REALM) continue
+      movedIds.add(daily.id)
+      const name =
+        typeof daily.name === 'string'
+          ? daily.name.trim().slice(0, MAX_PARTY_QUEST_NAME_LENGTH).trim()
+          : ''
+      const alreadyThere = partyQuests.some(
+        (quest) => isObject(quest) && quest.name === name,
+      )
+      if (name !== '' && !alreadyThere && partyQuests.length < MAX_PARTY_QUESTS) {
+        partyQuests.push({ id: `party-from-${String(daily.id)}`, name })
+      }
+    }
+
+    const challenges = Array.isArray(upgraded.challenges)
+      ? upgraded.challenges.map((challenge: unknown) =>
+          isObject(challenge) && movedIds.has(challenge.dailyId)
+            ? { ...challenge, dailyId: null }
+            : challenge,
+        )
+      : upgraded.challenges
+
+    upgraded = {
+      ...upgraded,
+      version: 10,
+      dailies: dailies.filter(
+        (daily) => !(isObject(daily) && daily.realm === PAIR_REALM),
+      ),
+      partyQuests,
+      challenges,
     }
   }
 

@@ -96,8 +96,8 @@ export const REALMS = [
   { id: 'questAbroad', name: 'Quest Abroad', covers: 'Career and life goals' },
 ] as const
 
-// The daily quests every new save starts with: one per realm, taken from the
-// rulebook. They are copied into the save, so each player can change their own
+// The daily quests every new save starts with: one per solo realm, taken from
+// the rulebook. (Together has none: see PAIR_REALM below.) They are copied into the save, so each player can change their own
 // list later without touching this file.
 export const DEFAULT_DAILIES = [
   {
@@ -119,12 +119,6 @@ export const DEFAULT_DAILIES = [
     xp: XP_SMALL,
   },
   {
-    id: 'daily-together-1',
-    realm: 'together',
-    name: '30 minutes of phone-free time together',
-    xp: XP_SMALL,
-  },
-  {
     id: 'daily-questAbroad-1',
     realm: 'questAbroad',
     name: '1 hour of application work',
@@ -143,3 +137,15 @@ export type PlayerId = (typeof PLAYERS)[number]['id']
 
 // A RealmId is one of: 'health' | 'mind' | 'wealth' | 'together' | 'questAbroad'
 export type RealmId = (typeof REALMS)[number]['id']
+
+// TOGETHER IS THE PAIR REALM: its XP comes only from things you do as a
+// pair, which means confirmed party quests. It has no Small / Big buttons
+// and no solo dailies.
+export const PAIR_REALM: RealmId = 'together'
+
+export function isPairRealm(realm: RealmId): boolean {
+  return realm === PAIR_REALM
+}
+
+// The realms you level on your own: every realm except the pair realm.
+export const SOLO_REALMS = REALMS.filter((realm) => !isPairRealm(realm.id))

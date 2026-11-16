@@ -7,7 +7,7 @@ import {
   DAILY_XP_CHOICES,
   MAX_DAILIES_PER_REALM,
   MAX_DAILY_NAME_LENGTH,
-  REALMS,
+  SOLO_REALMS,
   XP_SMALL,
 } from '../game/rules.ts'
 import type { RealmId } from '../game/rules.ts'
@@ -106,7 +106,8 @@ export function EditDailies({
         never touch XP you already earned.
       </p>
 
-      {REALMS.map((realm) => {
+      {/* Together is left out: it has party quests in place of dailies. */}
+      {SOLO_REALMS.map((realm) => {
         const dailies = save.dailies.filter((d) => d.realm === realm.id)
         return (
           <div key={realm.id} className="quest-group" data-realm={realm.id}>

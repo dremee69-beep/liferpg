@@ -6,6 +6,7 @@ import { useState } from 'react'
 import type { ChallengeInput } from '../game/challenges.ts'
 import {
   EXAMPLE_CHALLENGE,
+  isPairRealm,
   MAX_CHALLENGE_NAME_LENGTH,
   MAX_TIER_WEEKS,
   MAX_TIERS,
@@ -129,7 +130,10 @@ export function ChallengeForm({ save, existing, onSave, onCancel }: Props) {
           value={dailyId}
           onChange={(event) => setDailyId(event.target.value)}
         >
-          <option value="">Anything in this realm</option>
+          <option value="">
+            {/* Together only earns XP through party quests. */}
+            {isPairRealm(realm) ? 'Any confirmed party quest' : 'Anything in this realm'}
+          </option>
           {realmDailies.map((daily) => (
             <option key={daily.id} value={daily.id}>
               Only: {daily.name}

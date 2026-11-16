@@ -25,12 +25,12 @@ test('the same local day gives the same day key', () => {
   assert.equal(dayKey(nextDay), '2026-11-15')
 })
 
-test('a new save starts with one daily per realm', () => {
+test('a new save starts with one daily per solo realm (Together has none)', () => {
   const save = newSave('rachit')
-  assert.equal(save.dailies.length, 5)
+  assert.equal(save.dailies.length, 4)
   assert.deepEqual(
     save.dailies.map((d) => d.realm),
-    ['health', 'mind', 'wealth', 'together', 'questAbroad'],
+    ['health', 'mind', 'wealth', 'questAbroad'],
   )
 })
 

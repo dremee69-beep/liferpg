@@ -387,6 +387,8 @@ function App() {
           onLog={handleLog}
           onDaily={handleDaily}
           onRemoveEntry={handleRemoveEntry}
+          onLogParty={handleLogParty}
+          onConfirmParty={handleConfirmParty}
           onOpenHistory={() => {
             setHistoryOpen(true)
             window.scrollTo(0, 0)

@@ -7,6 +7,7 @@
 import { isDailyDoneToday } from './actions.ts'
 import {
   isDailyXp,
+  isPairRealm,
   MAX_DAILIES_PER_REALM,
   MAX_DAILY_NAME_LENGTH,
 } from './rules.ts'
@@ -48,8 +49,10 @@ function countInRealm(save: SaveData, realm: RealmId): number {
   return save.dailies.filter((daily) => daily.realm === realm).length
 }
 
-// Is there room for another daily in this realm?
+// Is there room for another daily in this realm? (Never in the pair realm:
+// Together has party quests in place of dailies.)
 export function canAddDaily(save: SaveData, realm: RealmId): boolean {
+  if (isPairRealm(realm)) return false
   return countInRealm(save, realm) < MAX_DAILIES_PER_REALM
 }
 

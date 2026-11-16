@@ -5,16 +5,20 @@
 
 import { dayKey } from './dates.ts'
 import { untickMilestone } from './epics.ts'
+import { isPairRealm } from './rules.ts'
 import type { RealmId } from './rules.ts'
 import type { SaveData } from '../storage/save.ts'
 
 // Log one action: add the XP to the realm and write a line in the log.
+// Does nothing for the pair realm (Together), which only earns XP through
+// confirmed party quests.
 export function logAction(
   save: SaveData,
   realm: RealmId,
   xp: number,
   now: Date,
 ): SaveData {
+  if (isPairRealm(realm)) return save
   return {
     ...save,
     realmXp: { ...save.realmXp, [realm]: save.realmXp[realm] + xp },
@@ -45,7 +49,7 @@ export function completeDaily(
   now: Date,
 ): SaveData {
   const daily = save.dailies.find((d) => d.id === dailyId)
-  if (daily === undefined) return save
+  if (daily === undefined || isPairRealm(daily.realm)) return save
   if (isDailyDoneToday(save, dailyId, now)) return save
 
   return {

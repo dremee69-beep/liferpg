@@ -1,6 +1,9 @@
 // ONE REALM CARD: icon, name, level, XP bar, today's daily quests, and the
 // two one-tap log buttons for anything else.
+// The Together card is different: it is given a `pairSection` to show in
+// place of the dailies and buttons, because Together is only earned as a pair.
 
+import type { ReactNode } from 'react'
 import type { ChallengeView } from '../game/challenges.ts'
 import type { DailyStatus } from '../game/dailies.ts'
 import { XP_BIG, XP_SMALL } from '../game/rules.ts'
@@ -17,6 +20,9 @@ type Props = {
   challenges: ChallengeView[] // this realm's challenges
   onLog: (realm: RealmId, xp: number) => void
   onDaily: (dailyId: string) => void
+  // Given only for the pair realm (Together): shown in place of the
+  // dailies and the Small / Big buttons.
+  pairSection?: ReactNode
 }
 
 // The short progress text for a challenge, shown on its realm's card.
@@ -64,6 +70,7 @@ export function RealmCard({
   challenges,
   onLog,
   onDaily,
+  pairSection,
 }: Props) {
   const progress = levelProgress(xp)
   // How full the bar is, as a percentage from 0 to 100.
@@ -110,8 +117,10 @@ export function RealmCard({
           </p>
         ))}
 
+      {pairSection}
+
       {/* Today's daily quests: one tap ticks one off until midnight. */}
-      {dailies.length > 0 && (
+      {pairSection === undefined && dailies.length > 0 && (
         <div className="dailies">
           {dailies.map((daily) => (
             <DailyRow key={daily.id} daily={daily} onTick={onDaily} />
@@ -119,6 +128,7 @@ export function RealmCard({
         </div>
       )}
 
+      {pairSection === undefined && (
       <div className="realm-buttons">
         <LogButton
           label="Small"
@@ -133,6 +143,7 @@ export function RealmCard({
           onLog={() => onLog(realm.id, XP_BIG)}
         />
       </div>
+      )}
     </section>
   )
 }

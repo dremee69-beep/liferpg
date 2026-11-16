@@ -7,7 +7,12 @@ import type { ChallengeInput } from '../game/challenges.ts'
 import { dailyStatuses } from '../game/dailies.ts'
 import { canAddEpic, epicView } from '../game/epics.ts'
 import type { EpicInput } from '../game/epics.ts'
-import { EPIC_MILESTONE_XP, MAX_SHIELDS, REALMS } from '../game/rules.ts'
+import {
+  EPIC_MILESTONE_XP,
+  MAX_SHIELDS,
+  REALMS,
+  SOLO_REALMS,
+} from '../game/rules.ts'
 import type { RealmId } from '../game/rules.ts'
 import type { ChallengeTier, SaveData } from '../storage/save.ts'
 import { ChallengeCard } from './ChallengeCard.tsx'
@@ -81,7 +86,8 @@ export function QuestLog({
   )
 
   // Work out each realm's dailies once, then count how many are done.
-  const groups = REALMS.map((realm) => ({
+  // (Together is left out: it has party quests in place of dailies.)
+  const groups = SOLO_REALMS.map((realm) => ({
     realm,
     dailies: dailyStatuses(save, realm.id, now),
   }))
