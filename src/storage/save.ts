@@ -17,6 +17,8 @@ import {
   XP_SMALL,
 } from '../game/rules.ts'
 import type { PlayerId, RealmId } from '../game/rules.ts'
+import { readPartnerSummary } from '../game/share.ts'
+import type { PartnerSummary } from '../game/share.ts'
 import type { RealmXp } from '../game/xp.ts'
 
 // Bump this number whenever the shape of SaveData changes, and add a step to
@@ -28,7 +30,8 @@ import type { RealmXp } from '../game/xp.ts'
 //   Version 5: adds shields.
 //   Version 6: adds the history of challenge weeks and finished tiers.
 //   Version 7: adds epic quests and their finished milestones.
-export const SAVE_VERSION = 7
+//   Version 8: adds what the partner's last share code said.
+export const SAVE_VERSION = 8
 
 // The names (keys) our data is filed under in the browser's notebook.
 const SAVE_KEY = 'liferpg-save'
@@ -171,6 +174,9 @@ export type SaveData = {
   finishedMilestones: FinishedMilestone[]
   // The player's epic quests.
   epics: EpicQuest[]
+  // What the partner's most recent share code said, or null if no code has
+  // been pasted in yet.
+  partner: PartnerSummary | null
 }
 
 // Every realm at zero: used for fresh XP and fresh skill points.
@@ -206,6 +212,7 @@ export function newSave(player: PlayerId): SaveData {
     finishedTiers: [],
     finishedMilestones: [],
     epics: [],
+    partner: null,
   }
 }
 
@@ -358,6 +365,11 @@ function migrate(data: Record<string, unknown>): Record<string, unknown> {
   // start empty.
   if (upgraded.version === 6) {
     upgraded = { ...upgraded, version: 7, epics: [], finishedMilestones: [] }
+  }
+
+  // Version 7 -> 8: the partner view arrives. No code has been pasted yet.
+  if (upgraded.version === 7) {
+    upgraded = { ...upgraded, version: 8, partner: null }
   }
 
   return upgraded
@@ -587,6 +599,9 @@ export function parseSave(text: string): SaveData | null {
     finishedTiers,
     finishedMilestones,
     epics,
+    // A partner summary we cannot read is dropped; pasting a fresh code
+    // brings it back.
+    partner: readPartnerSummary(data.partner),
   }
 }
 

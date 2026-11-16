@@ -240,6 +240,78 @@ h3 {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------- Partner card ---------- */
+
+.partner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: var(--outline);
+  border-radius: var(--round);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.partner-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.partner h2 {
+  font-size: 1.25rem;
+  line-height: 1.15;
+}
+
+/* The row of five realm chips: icon and level. */
+.partner-realms {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.partner-realm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 0;
+  border: var(--outline);
+  border-radius: 12px;
+  background: var(--accent);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.partner-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.partner-shields {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  --icon-fill: var(--band);
+}
+
+/* The box for pasting a partner's code: shorter than the milestones box,
+   and long codes wrap instead of running off the side. */
+.share-paste {
+  min-height: 96px;
+  overflow-wrap: anywhere;
+}
+
 /* ---------- Realm card ---------- */
 
 /* Anything marked with data-realm gets that realm's --accent colour; bands,

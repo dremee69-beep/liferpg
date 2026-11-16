@@ -8,6 +8,7 @@ import type { RealmId } from '../game/rules.ts'
 import { playerLevel } from '../game/xp.ts'
 import type { SaveData } from '../storage/save.ts'
 import { ActivityLog } from './ActivityLog.tsx'
+import { PartnerCard } from './PartnerCard.tsx'
 import { RealmCard } from './RealmCard.tsx'
 
 type Props = {
@@ -42,6 +43,9 @@ export function Village({
           <span className="player-level-number">{playerLevel(save.realmXp)}</span>
         </div>
       </header>
+
+      {/* Shown once your partner's share code has been pasted in Camp. */}
+      {save.partner !== null && <PartnerCard partner={save.partner} now={now} />}
 
       {REALMS.map((realm) => (
         <RealmCard

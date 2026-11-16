@@ -37,6 +37,8 @@ import {
   removeEpic,
   updateEpic,
 } from './game/epics.ts'
+import { applyPartnerCode } from './game/share.ts'
+import type { ShareProblem } from './game/share.ts'
 import {
   EPIC_MILESTONE_XP,
   MAX_SHIELDS,
@@ -286,6 +288,15 @@ function App() {
     })
   }
 
+  // A partner's share code was pasted in Camp. Tells Camp why it was not
+  // used, or null when it worked.
+  function handlePartnerCode(text: string): ShareProblem | null {
+    if (save === null) return 'unreadable'
+    const result = applyPartnerCode(save, text)
+    if (result.problem === null) commit(result.save)
+    return result.problem
+  }
+
   // A backup file was chosen and confirmed: use it as the save.
   function handleImport(imported: SaveData) {
     commit(imported)
@@ -367,7 +378,14 @@ function App() {
           onMilestone={handleMilestone}
         />
       )}
-      {screen === 'camp' && <Camp save={save} onImport={handleImport} />}
+      {screen === 'camp' && (
+        <Camp
+          save={save}
+          now={now}
+          onImport={handleImport}
+          onPartnerCode={handlePartnerCode}
+        />
+      )}
 
       <TabBar current={screen} onChange={handleChangeScreen} />
 

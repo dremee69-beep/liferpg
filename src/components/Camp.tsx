@@ -1,13 +1,18 @@
-// CAMP (settings): back up your save to a file, or bring one back in.
+// CAMP (settings): share codes with your partner, back up your save to a
+// file, or bring one back in.
 
 import { useState } from 'react'
 import { exportFileName, saveToText } from '../storage/save.ts'
 import type { SaveData } from '../storage/save.ts'
+import type { ShareProblem } from '../game/share.ts'
 import { ImportSave } from './ImportSave.tsx'
+import { SharePanel } from './SharePanel.tsx'
 
 type Props = {
   save: SaveData
+  now: Date
   onImport: (save: SaveData) => void
+  onPartnerCode: (text: string) => ShareProblem | null
 }
 
 // Builds the backup file in memory. It is a plain text file so that phones
@@ -27,7 +32,7 @@ function canShareFiles(file: File): boolean {
   )
 }
 
-export function Camp({ save, onImport }: Props) {
+export function Camp({ save, now, onImport, onPartnerCode }: Props) {
   const [message, setMessage] = useState<string | null>(null)
   const shareAvailable = canShareFiles(makeBackupFile(save))
 
@@ -61,8 +66,10 @@ export function Camp({ save, onImport }: Props) {
     <main className="screen camp">
       <header className="screen-header">
         <h1>Camp</h1>
-        <p className="screen-subtitle">Back up and restore your save</p>
+        <p className="screen-subtitle">Share codes and backups</p>
       </header>
+
+      <SharePanel save={save} now={now} onPartnerCode={onPartnerCode} />
 
       <section className="panel">
         <h2>Back up your save</h2>
