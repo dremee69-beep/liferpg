@@ -81,6 +81,12 @@ export const LINE_ICONS = {
     { d: 'M9 9h6M9 13h6M9 17h3' },
   ],
 
+  // Map: a folded map
+  map: [
+    { d: 'M3 6.5l6-2.5 6 2.5 6-2.5v13.5l-6 2.5-6-2.5-6 2.5z', fill: true },
+    { d: 'M9 4v13.5M15 6.5V20' },
+  ],
+
   // Camp: a tent
   camp: [
     { d: 'M12 4L3 20h18z', fill: true },

@@ -1091,6 +1091,104 @@ h3 {
   resize: vertical;
 }
 
+/* ---------- Map ---------- */
+
+.map-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.map-panel {
+  padding: 10px;
+}
+
+/* The map picture. Its outline and rounded corners match the cards. */
+.map {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: var(--outline);
+  border-radius: 12px;
+  background: #d6e6f5; /* the sea colour, shown while the picture loads */
+  /* Lets a finger still scroll the page when it starts on the map. */
+  touch-action: pan-y;
+}
+
+/* A state: see-through, with a thin line round it. "non-scaling-stroke"
+   keeps lines the same thickness however far the map is zoomed in. */
+.map-state {
+  fill: transparent;
+  stroke: var(--ink);
+  stroke-width: 0.8;
+  stroke-opacity: 0.55;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.map-state-no-line {
+  stroke: none;
+}
+
+/* The state you zoomed in on: a bold line and a light wash of colour. */
+.map-state-selected {
+  fill: rgb(255 255 255 / 0.28);
+  stroke: var(--ink);
+  stroke-width: 2.5;
+  stroke-opacity: 1;
+}
+
+/* India's outline: bold, and never in the way of a tap. */
+.map-outline {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.map-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 0 4px 4px;
+}
+
+.map-jump {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The key: a small colour swatch next to each height band. */
+.map-key {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.map-key-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-key-colour {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: var(--outline);
+  border-radius: 7px;
+}
+
 /* ---------- History ---------- */
 
 .history {

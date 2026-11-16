@@ -26,3 +26,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Raw map downloads used by scripts/make-map.mjs (large; only the shrunk
+# results in src/map and public/map are kept in the project)
+map-data/

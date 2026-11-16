@@ -6,10 +6,11 @@ import { Icon } from './Icon.tsx'
 export const SCREENS = [
   { id: 'village', name: 'Village' },
   { id: 'quests', name: 'Quests' },
+  { id: 'map', name: 'Map' },
   { id: 'camp', name: 'Camp' },
 ] as const
 
-// A ScreenId is one of: 'village' | 'quests' | 'camp'
+// A ScreenId is one of: 'village' | 'quests' | 'map' | 'camp'
 export type ScreenId = (typeof SCREENS)[number]['id']
 
 type Props = {

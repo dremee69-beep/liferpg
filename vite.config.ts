@@ -31,7 +31,8 @@ export default defineConfig({
 
       // Which built files to keep on the phone. "woff2" is the font file;
       // without it the font would be missing when there is no internet.
-      workbox: { globPatterns: ['**/*.{js,css,html,woff2}'] },
+      // "map/*.png" is the terrain picture for the Map screen.
+      workbox: { globPatterns: ['**/*.{js,css,html,woff2}', 'map/*.png'] },
 
       // The "manifest": what the phone shows when the app is installed.
       manifest: {

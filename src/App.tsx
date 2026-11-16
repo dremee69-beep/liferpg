@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Camp } from './components/Camp.tsx'
 import { CelebrationCard } from './components/CelebrationCard.tsx'
 import { History } from './components/History.tsx'
+import { MapScreen } from './components/MapScreen.tsx'
 import { PlayerPicker } from './components/PlayerPicker.tsx'
 import { QuestLog } from './components/QuestLog.tsx'
 import { TabBar } from './components/TabBar.tsx'
@@ -449,6 +450,7 @@ function App() {
           }
         />
       )}
+      {screen === 'map' && <MapScreen />}
       {screen === 'camp' && (
         <Camp
           save={save}
