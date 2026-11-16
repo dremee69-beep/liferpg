@@ -1,17 +1,31 @@
 /* THE LOOK
-   Plain and warm for now. The cozy pixel style comes in Milestone 4.
-   Colours are named once here (the lines starting with --) and reused below. */
+   Soft flat colours, dark outlines, and hard "sticker" shadows that sit down
+   and to the right. Buttons are pills that press into their shadow.
+   Colours and sizes are named once here (the lines starting with --) and
+   reused below, so the whole look can be tuned from this one block. */
 
 :root {
-  --page: #f4ecdb; /* parchment background */
-  --card: #fffaf0; /* card background */
-  --ink: #3a2e22; /* main text */
-  --ink-soft: #6f5f4c; /* quieter text */
-  --line: #d8c6a2; /* borders */
-  --track: #eadfc8; /* empty part of the XP bar */
-  --dark: #3a2e22; /* message bar */
+  --page: #f3f0e8; /* page background: soft oat */
+  --card: #ffffff; /* cards and panels */
+  --ink: #1e1b2e; /* text, outlines and shadows */
+  --ink-soft: #5c5870; /* quieter text */
+  --line: #d9d5e3; /* faint dividers */
+  --track: #ece9f3; /* empty part of a bar, quiet chips */
+  --band: #cfc4f7; /* the lilac band across screen headers */
+  --sun: #ffd166; /* main action colour when there is no realm */
+  --danger: #d64545; /* "are you sure?" red */
+  --dark: #1e1b2e; /* message bar */
 
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --outline: 2px solid var(--ink);
+  --shadow: 4px 4px 0 var(--ink); /* cards */
+  --shadow-small: 3px 3px 0 var(--ink); /* buttons */
+  --round: 18px; /* card corners */
+
+  /* A rounded font where the phone has one (iPhones do); otherwise the
+     phone's normal font. */
+  font-family:
+    ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', Roboto,
+    sans-serif;
   color: var(--ink);
   background: var(--page);
   color-scheme: light;
@@ -35,6 +49,13 @@ p {
   margin: 0;
 }
 
+h1,
+h2,
+h3 {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
 /* A screen is a single phone-width column, centred on bigger displays. */
 .screen {
   max-width: 480px;
@@ -45,9 +66,9 @@ p {
     calc(160px + env(safe-area-inset-bottom));
 }
 
-/* ---------- Pixel icons ---------- */
+/* ---------- Icons ---------- */
 
-.pixel-icon {
+.icon {
   display: block;
   flex-shrink: 0;
 }
@@ -59,44 +80,55 @@ p {
   position: relative;
   /* 52px tall: comfortably bigger than a thumb needs. */
   min-height: 52px;
-  padding: 0 16px;
-  border: 2px solid var(--accent, var(--ink));
-  border-radius: 12px;
+  padding: 0 18px;
+  border: var(--outline);
+  border-radius: 999px;
   background: var(--card);
   color: var(--ink);
+  box-shadow: var(--shadow-small);
   font: inherit;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   /* No grey flash or double-tap zoom when tapping on phones. */
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  transition:
+    transform 60ms ease-out,
+    box-shadow 60ms ease-out;
 }
 
-.button:active {
-  transform: translateY(1px);
-  filter: brightness(0.95);
+/* Pressing a button pushes it down into its shadow. */
+.button:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 var(--ink);
 }
 
 .button:focus-visible,
 .notice-undo:focus-visible {
   outline: 3px solid var(--ink);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 
 .button-strong {
-  background: var(--accent, var(--ink));
-  color: #fff;
+  background: var(--accent, var(--sun));
 }
 
 .button-big {
   min-height: 64px;
   font-size: 1.25rem;
+  font-weight: 800;
 }
 
 .button-xp {
   font-variant-numeric: tabular-nums;
-  opacity: 0.85;
+  opacity: 0.75;
+}
+
+.button:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+  cursor: default;
 }
 
 /* ---------- First launch: player picker ---------- */
@@ -111,6 +143,12 @@ p {
 }
 
 .picker h1 {
+  align-self: center;
+  padding: 6px 22px;
+  border: var(--outline);
+  border-radius: 999px;
+  background: var(--band);
+  box-shadow: var(--shadow);
   font-size: 2.25rem;
 }
 
@@ -122,8 +160,12 @@ p {
 .picker-buttons {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   margin: 8px 0;
+}
+
+.picker-buttons .button {
+  background: var(--sun);
 }
 
 .hint {
@@ -136,84 +178,98 @@ p {
 .village {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 18px;
 }
 
+/* The band across the top of the Village: your name and player level. */
 .village-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 4px 4px 8px;
+  padding: 14px 16px;
+  border: var(--outline);
+  border-radius: var(--round);
+  background: var(--band);
+  box-shadow: var(--shadow);
 }
 
 .village-label {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--ink-soft);
 }
 
 .village-header h1 {
-  font-size: 1.75rem;
+  font-size: 1.875rem;
+  line-height: 1.1;
 }
 
 .player-level {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8px 14px;
-  border: 2px solid var(--line);
-  border-radius: 12px;
+  padding: 6px 14px;
+  border: var(--outline);
+  border-radius: 14px;
   background: var(--card);
 }
 
 .player-level-label {
   font-size: 0.75rem;
+  font-weight: 600;
   color: var(--ink-soft);
 }
 
 .player-level-number {
   font-size: 1.75rem;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
 
 /* ---------- Realm card ---------- */
 
-/* Anything marked with data-realm gets that realm's --accent colour; bars,
-   buttons, tick boxes and stripes inside it pick the colour up. */
+/* Anything marked with data-realm gets that realm's --accent colour; bands,
+   bars, buttons and tick boxes inside it pick the colour up. */
 [data-realm='health'] {
-  --accent: #b5473c;
+  --accent: #ff9f8e; /* coral */
 }
 [data-realm='mind'] {
-  --accent: #3f6ea8;
+  --accent: #9cc9f5; /* sky */
 }
 [data-realm='wealth'] {
-  --accent: #8a6a12;
+  --accent: #ffd166; /* butter */
 }
 [data-realm='together'] {
-  --accent: #a8457d;
+  --accent: #f5a8cf; /* pink */
 }
 [data-realm='questAbroad'] {
-  --accent: #2f7d5b;
+  --accent: #9fdcb8; /* mint */
 }
 
 .realm {
   padding: 14px;
-  border: 2px solid var(--line);
-  border-left: 6px solid var(--accent);
-  border-radius: 14px;
+  border: var(--outline);
+  border-radius: var(--round);
   background: var(--card);
+  box-shadow: var(--shadow);
+  /* Keeps the coloured band inside the card's rounded corners. */
+  overflow: hidden;
 }
 
+/* The coloured band across the top of the card. The negative margins pull
+   it out to the card's edges. */
 .realm-top {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
+  margin: -14px -14px 0;
+  padding: 12px 14px;
+  border-bottom: var(--outline);
+  background: var(--accent);
 }
 
 /* The realm's icon sitting next to its name. */
@@ -225,42 +281,52 @@ p {
 }
 
 .realm h2 {
-  font-size: 1.1875rem;
+  font-size: 1.25rem;
+  line-height: 1.15;
 }
 
 .realm-covers {
-  font-size: 0.875rem;
-  color: var(--ink-soft);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  opacity: 0.75;
 }
 
 .realm-level {
   flex-shrink: 0;
-  padding: 4px 10px;
+  padding: 4px 12px;
+  border: var(--outline);
   border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-  font-weight: 700;
+  background: var(--card);
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
 .bar {
-  height: 12px;
-  margin-top: 12px;
+  height: 16px;
+  margin-top: 14px;
+  border: var(--outline);
   border-radius: 999px;
-  background: var(--track);
+  background: var(--card);
   overflow: hidden;
 }
 
 .bar-fill {
   height: 100%;
-  border-radius: 999px;
+  /* The line on the right edge shows exactly where the bar ends. */
+  border-right: var(--outline);
   background: var(--accent);
   transition: width 250ms ease-out;
+}
+
+/* An empty bar has no edge line to show. */
+.bar-fill[style*='width: 0%'] {
+  border-right: none;
 }
 
 .bar-text {
   margin-top: 4px;
   font-size: 0.8125rem;
+  font-weight: 600;
   color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
 }
@@ -269,8 +335,8 @@ p {
 .dailies {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 10px;
+  margin-top: 14px;
 }
 
 .daily {
@@ -281,24 +347,29 @@ p {
   width: 100%;
   min-height: 52px;
   padding: 8px 12px;
-  border: 2px solid var(--line);
-  border-radius: 12px;
-  background: #fff;
+  border: var(--outline);
+  border-radius: 14px;
+  background: var(--card);
   color: var(--ink);
+  box-shadow: var(--shadow-small);
   font: inherit;
   text-align: left;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  transition:
+    transform 60ms ease-out,
+    box-shadow 60ms ease-out;
 }
 
-.daily:active {
-  filter: brightness(0.96);
+.daily:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 var(--ink);
 }
 
 .daily:focus-visible {
   outline: 3px solid var(--ink);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 
 /* The tick box on the left. */
@@ -308,29 +379,31 @@ p {
   place-items: center;
   width: 26px;
   height: 26px;
-  border: 2px solid var(--accent);
-  border-radius: 7px;
-  color: #fff;
-  font-weight: 700;
+  border: var(--outline);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 800;
   line-height: 1;
 }
 
 .daily-name {
   flex: 1;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .daily-xp {
   flex-shrink: 0;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
 }
 
-/* Done for today: filled tick box, quieter text, no longer tappable. */
+/* Done for today: it sits flat (no shadow), tinted with the realm's colour. */
 .daily-done {
-  background: transparent;
+  background: color-mix(in srgb, var(--accent) 28%, #fff);
+  box-shadow: none;
   cursor: default;
 }
 
@@ -346,8 +419,10 @@ p {
 .realm-buttons {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 12px;
+  gap: 12px;
+  margin-top: 14px;
+  /* Room for the buttons' shadows inside the card. */
+  padding: 0 3px 3px 0;
 }
 
 /* ---------- Recent activity list ---------- */
@@ -366,9 +441,11 @@ p {
   align-items: center;
   gap: 10px;
   padding: 6px 6px 6px 10px;
-  border-left: 4px solid var(--accent);
-  border-radius: 6px;
-  background: #fff;
+  border: var(--outline);
+  border-radius: 14px;
+  background: var(--card);
+  /* Icons in the list are filled with their realm's colour. */
+  --icon-fill: var(--accent);
 }
 
 .activity-text {
@@ -379,7 +456,7 @@ p {
 }
 
 .activity-what {
-  font-weight: 600;
+  font-weight: 700;
   overflow-wrap: anywhere;
 }
 
@@ -396,13 +473,13 @@ p {
   min-width: 92px;
   min-height: 44px;
   padding: 0 12px;
-  border: 2px solid var(--line);
-  border-radius: 10px;
+  border: var(--outline);
+  border-radius: 999px;
   background: var(--card);
   color: var(--ink);
   font: inherit;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
@@ -410,7 +487,7 @@ p {
 
 .confirm-button:focus-visible {
   outline: 3px solid var(--ink);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 
 .confirm-button:disabled {
@@ -420,23 +497,29 @@ p {
 
 /* After the first tap: red, asking for the second tap. */
 .confirm-button-armed {
-  border-color: #8f1d1d;
-  background: #8f1d1d;
+  background: var(--danger);
   color: #fff;
 }
 
 /* ---------- Screen headers (Quest log, Camp) ---------- */
 
 .screen-header {
-  padding: 4px 4px 4px;
+  padding: 14px 16px;
+  border: var(--outline);
+  border-radius: var(--round);
+  background: var(--band);
+  box-shadow: var(--shadow);
 }
 
 .screen-header h1 {
-  font-size: 1.75rem;
+  font-size: 1.875rem;
+  line-height: 1.1;
 }
 
 .screen-subtitle {
-  color: var(--ink-soft);
+  margin-top: 2px;
+  font-weight: 600;
+  opacity: 0.75;
 }
 
 /* ---------- Quest log ---------- */
@@ -444,7 +527,7 @@ p {
 .quests {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 18px;
 }
 
 .panel-top {
@@ -454,42 +537,44 @@ p {
   gap: 12px;
 }
 
-/* A quiet text button, used for Edit / Done. */
+/* A small quiet button, used for Edit / Done. */
 .link-button {
   min-height: 44px;
-  padding: 0 14px;
-  border: 2px solid var(--line);
-  border-radius: 10px;
-  background: transparent;
+  padding: 0 16px;
+  border: var(--outline);
+  border-radius: 999px;
+  background: var(--card);
   color: var(--ink);
   font: inherit;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   touch-action: manipulation;
 }
 
 .link-button:focus-visible {
   outline: 3px solid var(--ink);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 
 /* One realm's group of dailies. */
 .quest-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  /* Room for the rows' shadows. */
+  padding: 0 3px 3px 0;
+  --icon-fill: var(--accent);
 }
 
 .quest-group-name {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-weight: 800;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--accent);
 }
 
 /* ---------- Editing dailies ---------- */
@@ -504,11 +589,11 @@ p {
 .edit-daily {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px;
-  border: 2px solid var(--line);
-  border-radius: 12px;
-  background: #fff;
+  gap: 8px;
+  padding: 10px;
+  border: var(--outline);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 22%, #fff);
 }
 
 /* The "new daily" box is dashed, to show it is not a daily yet. */
@@ -529,8 +614,9 @@ p {
   display: flex;
   flex: 1;
   max-width: 220px;
-  border: 2px solid var(--accent);
-  border-radius: 10px;
+  border: var(--outline);
+  border-radius: 999px;
+  background: var(--card);
   overflow: hidden;
 }
 
@@ -543,7 +629,7 @@ p {
   color: var(--ink);
   font: inherit;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -551,8 +637,7 @@ p {
 }
 
 .size-current {
-  background: var(--accent);
-  color: #fff;
+  background: var(--accent, var(--sun));
 }
 
 .size:focus-visible {
@@ -564,33 +649,35 @@ p {
   flex: 1;
   min-width: 0;
   min-height: 48px;
-  padding: 0 12px;
-  border: 2px solid var(--line);
-  border-radius: 10px;
-  background: #fff;
+  padding: 0 14px;
+  border: var(--outline);
+  border-radius: 12px;
+  background: var(--card);
   color: var(--ink);
   font: inherit;
   /* 16px or more stops iPhones from zooming in when you tap the box. */
   font-size: 1rem;
 }
 
-.edit-input:focus {
+/* The box you are typing in gets a shadow. */
+.edit-input:focus,
+.edit-select:focus {
   outline: none;
-  border-color: var(--accent);
+  box-shadow: var(--shadow-small);
 }
 
 .edit-add {
   flex-shrink: 0;
   min-width: 92px;
   min-height: 44px;
-  padding: 0 12px;
-  border: 2px solid var(--accent);
-  border-radius: 10px;
-  background: var(--accent);
-  color: #fff;
+  padding: 0 14px;
+  border: var(--outline);
+  border-radius: 999px;
+  background: var(--accent, var(--sun));
+  color: var(--ink);
   font: inherit;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -602,7 +689,7 @@ p {
 
 .edit-add:focus-visible {
   outline: 3px solid var(--ink);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 
 /* ---------- Challenges ---------- */
@@ -610,11 +697,11 @@ p {
 /* The "2 skill points" chip next to the Challenges heading. */
 .points-chip {
   padding: 4px 12px;
+  border: var(--outline);
   border-radius: 999px;
   background: var(--track);
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--ink-soft);
+  font-size: 0.8125rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
@@ -631,6 +718,7 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  background: var(--band);
 }
 
 .shield-note {
@@ -642,10 +730,10 @@ p {
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  border: 2px solid var(--line);
-  border-left: 6px solid var(--accent);
-  border-radius: 12px;
-  background: #fff;
+  border: var(--outline);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 22%, #fff);
+  --icon-fill: var(--accent);
 }
 
 .challenge-top {
@@ -664,11 +752,11 @@ p {
 .challenge-tier-chip {
   flex-shrink: 0;
   padding: 3px 10px;
+  border: var(--outline);
   border-radius: 999px;
   background: var(--accent);
-  color: #fff;
   font-size: 0.8125rem;
-  font-weight: 700;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
@@ -687,7 +775,7 @@ p {
   width: 72px;
   flex-shrink: 0;
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--ink-soft);
 }
 
@@ -699,10 +787,11 @@ p {
 }
 
 .box {
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--accent);
-  border-radius: 4px;
+  width: 18px;
+  height: 18px;
+  border: var(--outline);
+  border-radius: 6px;
+  background: var(--card);
 }
 
 .box-filled {
@@ -712,7 +801,7 @@ p {
 .challenge-count {
   flex-shrink: 0;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
@@ -732,16 +821,17 @@ p {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  margin-top: 8px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: var(--track);
+  margin-top: 10px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 28%, #fff);
   font-size: 0.8125rem;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
 .realm-challenge-name {
-  font-weight: 700;
+  font-weight: 800;
   overflow-wrap: anywhere;
 }
 
@@ -751,7 +841,7 @@ p {
   min-width: 92px;
   text-align: center;
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--ink-soft);
 }
 
@@ -762,8 +852,8 @@ p {
   flex-direction: column;
   gap: 12px;
   padding: 12px;
-  border: 2px dashed var(--accent);
-  border-radius: 12px;
+  border: 2px dashed var(--ink);
+  border-radius: 14px;
 }
 
 /* One question in the form: its label, then its box. */
@@ -775,7 +865,7 @@ p {
 
 .field-label {
   font-size: 0.875rem;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 /* A drop-down list, styled to match the text boxes. */
@@ -783,17 +873,12 @@ p {
   width: 100%;
   min-height: 48px;
   padding: 0 10px;
-  border: 2px solid var(--line);
-  border-radius: 10px;
-  background: #fff;
+  border: var(--outline);
+  border-radius: 12px;
+  background: var(--card);
   color: var(--ink);
   font: inherit;
   font-size: 1rem;
-}
-
-.edit-select:focus {
-  outline: none;
-  border-color: var(--accent);
 }
 
 .edit-select:disabled {
@@ -810,10 +895,10 @@ p {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px;
-  border: 2px solid var(--line);
-  border-radius: 12px;
-  background: #fff;
+  padding: 10px;
+  border: var(--outline);
+  border-radius: 14px;
+  background: var(--card);
 }
 
 .tier-edit-top {
@@ -824,10 +909,9 @@ p {
 
 .tier-number {
   font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-weight: 800;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--accent);
 }
 
 .tier-remove {
@@ -838,7 +922,7 @@ p {
   color: var(--ink-soft);
   font: inherit;
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 700;
   text-decoration: underline;
   cursor: pointer;
 }
@@ -847,11 +931,6 @@ p {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
-}
-
-.button:disabled {
-  opacity: 0.45;
-  cursor: default;
 }
 
 /* ---------- Tab bar at the bottom ---------- */
@@ -863,9 +942,10 @@ p {
   bottom: 0;
   display: flex;
   justify-content: center;
+  gap: 6px;
   /* Keeps the tabs above the iPhone home bar. */
-  padding-bottom: env(safe-area-inset-bottom);
-  border-top: 2px solid var(--line);
+  padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
+  border-top: var(--outline);
   background: var(--card);
 }
 
@@ -875,25 +955,27 @@ p {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  font-size: 0.75rem;
+  gap: 1px;
   flex: 1;
-  max-width: 160px;
-  height: 60px;
-  border: none;
-  border-top: 4px solid transparent;
+  max-width: 150px;
+  height: 52px;
+  border: 2px solid transparent;
+  border-radius: 16px;
   background: transparent;
-  color: var(--ink-soft);
+  color: var(--ink);
   font: inherit;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 700;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
 
+/* The open tab is a filled, outlined pill. */
 .tab-current {
-  border-top-color: var(--ink);
-  color: var(--ink);
+  border-color: var(--ink);
+  background: var(--band);
+  box-shadow: 2px 2px 0 var(--ink);
 }
 
 .tab:focus-visible {
@@ -910,33 +992,34 @@ p {
 .button-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 12px;
 }
 
 .button-column {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .camp {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 18px;
 }
 
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px;
-  border: 2px solid var(--line);
-  border-radius: 14px;
+  gap: 12px;
+  padding: 16px;
+  border: var(--outline);
+  border-radius: var(--round);
   background: var(--card);
+  box-shadow: var(--shadow);
 }
 
 .panel h2 {
-  font-size: 1.1875rem;
+  font-size: 1.25rem;
 }
 
 .panel-text {
@@ -946,7 +1029,7 @@ p {
 
 .panel-message {
   font-size: 0.9375rem;
-  font-weight: 600;
+  font-weight: 700;
   overflow-wrap: anywhere;
 }
 
@@ -959,8 +1042,8 @@ p {
 
 .import-warning,
 .import-error {
-  font-weight: 600;
-  color: #8f1d1d;
+  font-weight: 700;
+  color: #a32222;
 }
 
 .import-error {
@@ -973,7 +1056,7 @@ p {
   gap: 8px;
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 2px solid var(--line);
+  border-top: 2px dashed var(--ink);
 }
 
 /* ---------- Message bar at the bottom ---------- */
@@ -981,8 +1064,8 @@ p {
 .notice {
   position: fixed;
   left: 50%;
-  /* Sits just above the tab bar (which is 60px tall plus its border). */
-  bottom: calc(74px + env(safe-area-inset-bottom));
+  /* Sits just above the tab bar. */
+  bottom: calc(78px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   width: min(448px, calc(100% - 32px));
   display: flex;
@@ -990,24 +1073,23 @@ p {
   align-items: center;
   gap: 12px;
   min-height: 56px;
-  padding: 6px 6px 6px 16px;
-  border-radius: 14px;
+  padding: 6px 6px 6px 20px;
+  border-radius: 999px;
   background: var(--dark);
   color: #fff;
-  font-weight: 600;
-  box-shadow: 0 6px 18px rgb(58 46 34 / 0.3);
+  font-weight: 700;
 }
 
 .notice-undo {
   flex-shrink: 0;
   min-height: 44px;
-  padding: 0 16px;
-  border: 2px solid rgb(255 255 255 / 0.6);
-  border-radius: 10px;
-  background: transparent;
-  color: #fff;
+  padding: 0 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--sun);
+  color: var(--ink);
   font: inherit;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -1018,9 +1100,9 @@ p {
   max-width: 480px;
   margin: 0 auto;
   padding: 12px 16px;
-  background: #7a1f1f;
+  background: var(--danger);
   color: #fff;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* ---------- Animations ---------- */
@@ -1068,12 +1150,12 @@ p {
   left: 50%;
   top: 0;
   z-index: 2;
-  padding: 2px 8px;
+  padding: 2px 10px;
   border-radius: 999px;
   background: var(--dark);
   color: #fff;
   font-size: 0.9375rem;
-  font-weight: 700;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   text-decoration: none;
   white-space: nowrap;
@@ -1114,16 +1196,16 @@ p {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   width: min(300px, 100%);
   padding: 22px 20px 20px;
-  border: 4px solid var(--accent);
-  border-radius: 18px;
+  border: 3px solid var(--ink);
+  border-radius: 24px;
   background: var(--card);
   color: var(--ink);
   font: inherit;
   text-align: center;
-  box-shadow: 0 14px 40px rgb(58 46 34 / 0.35);
+  box-shadow: 7px 7px 0 var(--ink);
   cursor: pointer;
   pointer-events: auto; /* the card itself can be tapped to close it */
   -webkit-tap-highlight-color: transparent;
@@ -1141,7 +1223,15 @@ p {
   }
 }
 
+/* The icon sits on a round badge in the realm's colour. */
 .celebration-icon {
+  display: grid;
+  place-items: center;
+  width: 104px;
+  height: 104px;
+  border: var(--outline);
+  border-radius: 50%;
+  background: var(--accent);
   animation: icon-bounce 700ms ease-out 200ms both;
 }
 
@@ -1164,9 +1254,8 @@ p {
 }
 
 .celebration-title {
-  font-size: 1.625rem;
+  font-size: 1.75rem;
   font-weight: 800;
-  color: var(--accent);
 }
 
 .celebration-line {
@@ -1175,12 +1264,12 @@ p {
 
 .celebration-chip {
   margin-top: 4px;
-  padding: 4px 12px;
+  padding: 4px 14px;
+  border: var(--outline);
   border-radius: 999px;
-  background: var(--track);
+  background: var(--sun);
   font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--ink-soft);
+  font-weight: 700;
 }
 
 /* The sparkles all start at the centre of the card and fly outwards. */
@@ -1194,18 +1283,20 @@ p {
 
 .sparkle {
   position: absolute;
-  left: -5px;
-  top: -5px;
-  width: 10px;
-  height: 10px;
+  left: -6px;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  border: var(--outline);
+  border-radius: 50%;
   background: var(--accent);
   opacity: 0;
   animation: sparkle-fly 950ms ease-out forwards;
 }
 
-/* Every other sparkle is gold, for a two-colour burst. */
+/* Every other sparkle is yellow, for a two-colour burst. */
 .sparkle:nth-child(even) {
-  background: #d9ae2b;
+  background: var(--sun);
 }
 
 /* --fly-x and --fly-y are set on each sparkle by CelebrationCard.tsx. */
@@ -1243,7 +1334,13 @@ p {
   .bar-fill {
     transition: none;
   }
-  .button:active {
+  .button,
+  .daily {
+    transition: none;
+  }
+  .button:active:not(:disabled),
+  .daily:active:not(:disabled) {
     transform: none;
+    box-shadow: var(--shadow-small);
   }
 }

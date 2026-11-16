@@ -3,7 +3,7 @@
 
 import type { ChallengeView } from '../game/challenges.ts'
 import { ConfirmButton } from './ConfirmButton.tsx'
-import { PixelIcon } from './PixelIcon.tsx'
+import { Icon } from './Icon.tsx'
 
 type Props = {
   view: ChallengeView
@@ -32,7 +32,7 @@ export function ChallengeCard({ view, onEdit, onRemove }: Props) {
   return (
     <article className="challenge" data-realm={view.realm}>
       <div className="challenge-top">
-        <PixelIcon name={view.realm} size={24} />
+        <Icon name={view.realm} size={24} />
         <h3 className="challenge-name">{view.name}</h3>
         <span className="challenge-tier-chip">
           {view.allTiersDone

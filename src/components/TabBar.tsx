@@ -1,6 +1,6 @@
 // THE TAB BAR at the bottom of the screen: one tap to switch screens.
 
-import { PixelIcon } from './PixelIcon.tsx'
+import { Icon } from './Icon.tsx'
 
 // The screens the app has. Each id is also the name of its icon. Add a line here when a new screen is built.
 export const SCREENS = [
@@ -29,7 +29,7 @@ export function TabBar({ current, onChange }: Props) {
           aria-current={screen.id === current ? 'page' : undefined}
           onClick={() => onChange(screen.id)}
         >
-          <PixelIcon name={screen.id} size={24} />
+          <Icon name={screen.id} size={24} />
           <span className="tab-name">{screen.name}</span>
         </button>
       ))}

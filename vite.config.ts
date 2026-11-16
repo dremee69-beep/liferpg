@@ -39,8 +39,8 @@ export default defineConfig({
         scope: BASE,
         display: 'standalone', // open like an app, without the browser bars
         orientation: 'portrait',
-        background_color: '#f4ecdb',
-        theme_color: '#f4ecdb',
+        background_color: '#f3f0e8',
+        theme_color: '#f3f0e8',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },

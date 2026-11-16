@@ -5,9 +5,9 @@
 
 import { useEffect } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import type { IconName } from '../art/icons.ts'
+import type { IconName } from '../art/line-icons.ts'
 import type { RealmId } from '../game/rules.ts'
-import { PixelIcon } from './PixelIcon.tsx'
+import { Icon } from './Icon.tsx'
 
 type Props = {
   realm: RealmId // decides the icon and the colour
@@ -73,7 +73,7 @@ export function CelebrationCard({
         </span>
 
         <span className="celebration-icon">
-          <PixelIcon name={icon ?? realm} size={72} />
+          <Icon name={icon ?? realm} size={72} />
         </span>
         <span className="celebration-title">{title}</span>
         {children}

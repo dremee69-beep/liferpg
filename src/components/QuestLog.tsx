@@ -12,7 +12,7 @@ import { ChallengeCard } from './ChallengeCard.tsx'
 import { ChallengeForm } from './ChallengeForm.tsx'
 import { DailyRow } from './DailyRow.tsx'
 import { EditDailies } from './EditDailies.tsx'
-import { PixelIcon } from './PixelIcon.tsx'
+import { Icon } from './Icon.tsx'
 
 type Props = {
   save: SaveData
@@ -100,7 +100,7 @@ export function QuestLog({
           groups.map(({ realm, dailies }) => (
             <div key={realm.id} className="quest-group" data-realm={realm.id}>
               <h3 className="quest-group-name">
-                <PixelIcon name={realm.id} size={24} />
+                <Icon name={realm.id} size={24} />
                 {realm.name}
               </h3>
               {dailies.map((daily) => (
@@ -117,7 +117,7 @@ export function QuestLog({
           <h2>Challenges</h2>
           <span className="chips">
             <span className="points-chip shield-chip">
-              <PixelIcon name="shield" size={12} />
+              <Icon name="shield" size={16} />
               {save.shields} of {MAX_SHIELDS} shields
             </span>
             <span className="points-chip">

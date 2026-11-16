@@ -7,7 +7,7 @@ import { XP_BIG, XP_SMALL } from '../game/rules.ts'
 import type { RealmId } from '../game/rules.ts'
 import { levelProgress } from '../game/xp.ts'
 import { DailyRow } from './DailyRow.tsx'
-import { PixelIcon } from './PixelIcon.tsx'
+import { Icon } from './Icon.tsx'
 import { useXpPops } from './XpPops.tsx'
 
 type Props = {
@@ -74,7 +74,7 @@ export function RealmCard({
     <section className="realm" data-realm={realm.id}>
       <div className="realm-top">
         <div className="realm-title">
-          <PixelIcon name={realm.id} size={36} />
+          <Icon name={realm.id} size={36} />
           <div>
             <h2>{realm.name}</h2>
             <p className="realm-covers">{realm.covers}</p>
