@@ -1110,18 +1110,20 @@ h3 {
   height: auto;
   border: var(--outline);
   border-radius: 12px;
-  background: #d6e6f5; /* the sea colour, shown while the picture loads */
+  background: #40aad6; /* the sea colour, shown while the picture loads */
   /* Lets a finger still scroll the page when it starts on the map. */
   touch-action: pan-y;
 }
 
-/* A state: see-through, with a thin line round it. "non-scaling-stroke"
-   keeps lines the same thickness however far the map is zoomed in. */
+/* A state: see-through, with a dashed line round it, like the borders on a
+   game map. "non-scaling-stroke" keeps lines the same thickness however far
+   the map is zoomed in. */
 .map-state {
   fill: transparent;
   stroke: var(--ink);
-  stroke-width: 0.8;
-  stroke-opacity: 0.55;
+  stroke-width: 1.2;
+  stroke-opacity: 0.45;
+  stroke-dasharray: 5 4;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
   cursor: pointer;
@@ -1138,13 +1140,15 @@ h3 {
   stroke: var(--ink);
   stroke-width: 2.5;
   stroke-opacity: 1;
+  stroke-dasharray: none;
 }
 
-/* India's outline: bold, and never in the way of a tap. */
+/* India's outline: a thick ink line, like a cartoon drawing, and never in
+   the way of a tap. */
 .map-outline {
   fill: none;
   stroke: var(--ink);
-  stroke-width: 1.5;
+  stroke-width: 2.5;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
   pointer-events: none;
@@ -1169,12 +1173,12 @@ h3 {
   vector-effect: non-scaling-stroke;
 }
 
-/* The name has a soft white edge drawn behind the letters ("paint-order"),
-   so it stays readable over any terrain colour or border line. */
+/* The name has a solid white "sticker" edge drawn behind the letters
+   ("paint-order"), so it stays readable over any colour or border line. */
 .map-town-name {
   font-weight: 800;
   fill: var(--ink);
-  stroke: rgb(255 255 255 / 0.85);
+  stroke: #fff;
   stroke-linejoin: round;
   paint-order: stroke;
   /* x and y give the middle of the name. */

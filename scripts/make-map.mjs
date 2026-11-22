@@ -225,40 +225,165 @@ const insideIndia = fillMask(indiaRings, PICTURE_WIDE, PICTURE_HIGH, PICTURE_SCA
 // Painting the terrain picture
 // ---------------------------------------------------------------------------
 
-// Colours as [red, green, blue]. Soft, to sit well with the rest of the app.
-const SEA = [214, 230, 245]
-const OTHER_LAND = [233, 230, 222] // land outside India: plain, no detail
+// THE CARTOON LOOK. The picture is painted like a video-game map:
+//   - a bright sea, with rings of shallow water and white foam at the coast
+//   - India in a few flat, bold colours by height, with a dark "ink" line
+//     wherever the land steps up to the next colour
+//   - the land of other countries in plain sand, so India stands out
+// It still uses the real heights, so every hill and plain is where it is.
+
+// Colours as [red, green, blue].
+const DEEP_SEA = [64, 170, 214]
+const MID_SEA = [96, 196, 226]
+const SHALLOW_SEA = [146, 222, 236]
+const FOAM = [236, 250, 250]
+const OTHER_LAND = [226, 214, 186] // land outside India: plain sand
+const OTHER_SNOW = [238, 232, 222] // high land outside India: paler sand
 
 // Inside India the colour depends on the height. Each line is "below this
 // many metres, use this colour", with the words shown in the map's key.
 const BANDS = [
-  [150, [201, 230, 201], 'Under 150 m'], // low plains and coasts: green
-  [400, [221, 236, 196], '150 to 400 m'], // higher plains
-  [800, [243, 233, 180], '400 to 800 m'], // plateaus: yellow
-  [1500, [246, 213, 166], '800 to 1,500 m'], // hills: sand
-  [3000, [238, 186, 160], '1,500 to 3,000 m'], // mountains: clay
-  [4500, [219, 196, 214], '3,000 to 4,500 m'], // high mountains: mauve
-  [Infinity, [250, 248, 252], 'Over 4,500 m'], // highest peaks and ice
+  [120, [126, 206, 98], 'Under 120 m'], // lowlands and coasts: lush green
+  [350, [168, 222, 104], '120 to 350 m'], // plains: light green
+  [700, [236, 214, 112], '350 to 700 m'], // plateaus: gold
+  [1400, [222, 168, 96], '700 to 1,400 m'], // hills: tan
+  [2800, [176, 128, 92], '1,400 to 2,800 m'], // mountains: brown
+  [4200, [150, 140, 160], '2,800 to 4,200 m'], // high mountains: grey rock
+  [Infinity, [252, 252, 255], 'Over 4,200 m'], // highest peaks: snow
 ]
 
-function bandColour(metres) {
-  for (const [below, colour] of BANDS) if (metres < below) return colour
-  return BANDS[BANDS.length - 1][1]
+// Which band a height falls in: 0 for the lowest, up to 6 for snow.
+function bandOf(metres) {
+  for (let k = 0; k < BANDS.length; k++) if (metres < BANDS[k][0]) return k
+  return BANDS.length - 1
+}
+
+const PIXELS = PICTURE_WIDE * PICTURE_HIGH
+
+// The height under every pixel of the picture.
+const rawHeight = new Float32Array(PIXELS)
+for (let py = 0; py < PICTURE_HIGH; py++) {
+  for (let px = 0; px < PICTURE_WIDE; px++) {
+    rawHeight[py * PICTURE_WIDE + px] = heightAt(
+      (px + 0.5) / PICTURE_SCALE,
+      (py + 0.5) / PICTURE_SCALE,
+    )
+  }
+}
+
+// Blurs a grid of numbers: each value becomes the average of the square of
+// values around it, "reach" pixels each way. Done across, then down (fast).
+function blur(source, reach) {
+  const across = new Float32Array(PIXELS)
+  const result = new Float32Array(PIXELS)
+  for (let y = 0; y < PICTURE_HIGH; y++) {
+    let sum = 0
+    let count = 0
+    for (let x = -reach; x < PICTURE_WIDE; x++) {
+      if (x + reach < PICTURE_WIDE) {
+        sum += source[y * PICTURE_WIDE + x + reach]
+        count++
+      }
+      if (x - reach - 1 >= 0) {
+        sum -= source[y * PICTURE_WIDE + x - reach - 1]
+        count--
+      }
+      if (x >= 0) across[y * PICTURE_WIDE + x] = sum / count
+    }
+  }
+  for (let x = 0; x < PICTURE_WIDE; x++) {
+    let sum = 0
+    let count = 0
+    for (let y = -reach; y < PICTURE_HIGH; y++) {
+      if (y + reach < PICTURE_HIGH) {
+        sum += across[(y + reach) * PICTURE_WIDE + x]
+        count++
+      }
+      if (y - reach - 1 >= 0) {
+        sum -= across[(y - reach - 1) * PICTURE_WIDE + x]
+        count--
+      }
+      if (y >= 0) result[y * PICTURE_WIDE + x] = sum / count
+    }
+  }
+  return result
+}
+
+// Smoothed heights: blurred twice, so the colour patches have soft, round
+// "cartoon" edges instead of thousands of tiny specks.
+const smoothHeight = blur(blur(rawHeight, 3), 3)
+
+// Which pixels are land (any country)?
+const isLand = new Uint8Array(PIXELS)
+for (let i = 0; i < PIXELS; i++) isLand[i] = rawHeight[i] > 0 || insideIndia[i] ? 1 : 0
+
+// How far each sea pixel is from the nearest land, in pixels. Found by
+// spreading outwards from every land pixel, one step at a time.
+const seaDistance = new Float32Array(PIXELS).fill(Infinity)
+const queue = []
+for (let i = 0; i < PIXELS; i++) {
+  if (isLand[i]) {
+    seaDistance[i] = 0
+    queue.push(i)
+  }
+}
+const STEPS = [
+  [1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1],
+  [1, 1, 1.41], [-1, 1, 1.41], [1, -1, 1.41], [-1, -1, 1.41],
+]
+for (let head = 0; head < queue.length; head++) {
+  const i = queue[head]
+  const x = i % PICTURE_WIDE
+  const y = (i - x) / PICTURE_WIDE
+  for (const [dx, dy, cost] of STEPS) {
+    const nx = x + dx
+    const ny = y + dy
+    if (nx < 0 || ny < 0 || nx >= PICTURE_WIDE || ny >= PICTURE_HIGH) continue
+    const j = ny * PICTURE_WIDE + nx
+    if (seaDistance[j] > seaDistance[i] + cost) {
+      seaDistance[j] = seaDistance[i] + cost
+      queue.push(j)
+    }
+  }
+}
+
+// The smoothed height a few pixels away (clamped to the picture's edges).
+function smoothAt(px, py) {
+  const x = Math.min(PICTURE_WIDE - 1, Math.max(0, px))
+  const y = Math.min(PICTURE_HIGH - 1, Math.max(0, py))
+  return smoothHeight[y * PICTURE_WIDE + x]
 }
 
 const relief = makePng(PICTURE_WIDE, PICTURE_HIGH, (px, py) => {
-  const x = (px + 0.5) / PICTURE_SCALE
-  const y = (py + 0.5) / PICTURE_SCALE
-  const metres = heightAt(x, y)
+  const i = py * PICTURE_WIDE + px
 
-  if (!insideIndia[py * PICTURE_WIDE + px]) return metres <= 0 ? SEA : OTHER_LAND
+  // The sea: foam, then shallow water, then a wavy middle ring, then deep.
+  if (!isLand[i]) {
+    const distance = seaDistance[i] / PICTURE_SCALE
+    if (distance < 3) return FOAM
+    if (distance < 9) return SHALLOW_SEA
+    if (distance < 22 + 4 * Math.sin(px / 23) * Math.cos(py / 19)) return MID_SEA
+    return DEEP_SEA
+  }
 
-  // Shading: slopes facing the top-left (where the "sun" is) are a touch
-  // lighter, slopes facing away a touch darker. Kept to three steps so the
-  // picture stays flat and clean.
-  const slope = heightAt(x + 2, y + 2) - heightAt(x - 2, y - 2)
-  const shade = slope > 250 ? 0.93 : slope < -250 ? 1.04 : 1
-  return bandColour(metres).map((part) => Math.min(255, Math.round(part * shade)))
+  // Other countries: plain.
+  if (!insideIndia[i]) return rawHeight[i] > 2500 ? OTHER_SNOW : OTHER_LAND
+
+  const band = bandOf(smoothHeight[i])
+  const colour = BANDS[band][1]
+
+  // The ink line: this pixel sits just below the edge of a higher band.
+  const higherNext =
+    bandOf(smoothAt(px - 2, py)) > band || bandOf(smoothAt(px, py - 2)) > band
+  if (higherNext && band < BANDS.length - 1) {
+    return colour.map((part) => Math.round(part * 0.72))
+  }
+
+  // Simple cartoon shading: slopes facing away from the "sun" (top left)
+  // one step darker, slopes facing it one step lighter.
+  const slope = smoothAt(px + 3, py + 3) - smoothAt(px - 3, py - 3)
+  const shade = slope > 120 ? 0.86 : slope < -120 ? 1.08 : 1
+  return colour.map((part) => Math.min(255, Math.round(part * shade)))
 })
 
 mkdirSync('public/map', { recursive: true })
