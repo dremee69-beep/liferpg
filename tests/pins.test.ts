@@ -18,13 +18,17 @@ import {
 import {
   addPin,
   canAddPin,
+  confirmPin,
+  declinePin,
   isVisitDate,
+  pinsForCode,
   pinsNewestFirst,
   removePin,
   updatePin,
 } from '../src/game/pins.ts'
 import { iconForTerrain, isPinPhoto, markerIconOf } from '../src/game/markers.ts'
 import type { PinInput } from '../src/game/pins.ts'
+import { applyPartnerCode, makeShareCode } from '../src/game/share.ts'
 import { MAX_PIN_PHOTO_CHARS, MAX_PINS } from '../src/game/rules.ts'
 import { INDIA_MAP } from '../src/map/india.ts'
 import { newSave, parseSave, saveToText, SAVE_VERSION } from '../src/storage/save.ts'
@@ -318,4 +322,85 @@ test('a version 11 save keeps its pins, which get terrain icons', () => {
   assert.equal(upgraded?.version, SAVE_VERSION)
   assert.equal(upgraded?.pins.length, 1)
   assert.equal(markerIconOf(upgraded!.pins[0]), 'mountain')
+})
+
+// ---------- Sharing pins through share codes ----------
+
+test('the whole journey: drop, send, confirm, send back', () => {
+  // Rachit drops a pin, with a photo.
+  let rachit = addPin(newSave('rachit'), { ...HILL_STATION, photo: PHOTO }, nov(16))
+  const id = rachit.pins[0].id
+
+  // Deepika reads his code: the pin arrives, waiting for her, without the photo.
+  let deepika = newSave('deepika')
+  const arrived = applyPartnerCode(deepika, makeShareCode(rachit, nov(16, 10)), nov(16, 10))
+  deepika = arrived.save
+  assert.deepEqual(arrived.pinNews.toConfirm.map((pin) => pin.name), ['Hill station'])
+  assert.equal(deepika.pins[0].state, 'pending')
+  assert.equal(deepika.pins[0].by, 'rachit')
+  assert.equal(deepika.pins[0].photo, undefined)
+
+  // She confirms it. Her code carries the answer back.
+  deepika = confirmPin(deepika, id)
+  assert.equal(deepika.pins[0].state, 'confirmed')
+  const back = applyPartnerCode(rachit, makeShareCode(deepika, nov(16, 11)), nov(16, 11))
+  rachit = back.save
+  assert.equal(rachit.pins[0].state, 'confirmed')
+  assert.equal(rachit.pins[0].photo, PHOTO) // his photo is still on his phone
+  assert.deepEqual(back.pinNews.confirmed.map((pin) => pin.name), ['Hill station'])
+})
+
+test('reading the same code twice adds a pin only once', () => {
+  const rachit = addPin(newSave('rachit'), HILL_STATION, nov(16))
+  const code = makeShareCode(rachit, nov(16, 10))
+  let deepika = applyPartnerCode(newSave('deepika'), code, nov(16, 10)).save
+  const again = applyPartnerCode(deepika, code, nov(16, 10))
+  deepika = again.save
+  assert.equal(deepika.pins.length, 1)
+  assert.deepEqual(again.pinNews.toConfirm, [])
+})
+
+test('a declined pin is marked on both phones and leaves the code', () => {
+  let rachit = addPin(newSave('rachit'), HILL_STATION, nov(16))
+  const id = rachit.pins[0].id
+  let deepika = applyPartnerCode(newSave('deepika'), makeShareCode(rachit, nov(16, 10)), nov(16, 10)).save
+  deepika = declinePin(deepika, id)
+  assert.equal(deepika.pins[0].state, 'declined')
+
+  const back = applyPartnerCode(rachit, makeShareCode(deepika, nov(16, 11)), nov(16, 11))
+  rachit = back.save
+  assert.equal(rachit.pins[0].state, 'declined')
+  assert.deepEqual(back.pinNews.declined.map((pin) => pin.name), ['Hill station'])
+  // Decided pins no longer travel from his phone.
+  assert.deepEqual(pinsForCode(rachit), [])
+})
+
+test("you cannot confirm, decline or edit your own pin, nor edit your partner's", () => {
+  const rachit = addPin(newSave('rachit'), HILL_STATION, nov(16))
+  const id = rachit.pins[0].id
+  assert.equal(confirmPin(rachit, id), rachit)
+  assert.equal(declinePin(rachit, id), rachit)
+
+  const deepika = applyPartnerCode(newSave('deepika'), makeShareCode(rachit, nov(16, 10)), nov(16, 10)).save
+  const details = { name: 'Renamed', date: '2026-11-07', bucketList: false }
+  assert.equal(updatePin(deepika, id, details, nov(16)), deepika)
+})
+
+test('a pin removed before the answer arrives stays removed', () => {
+  let rachit = addPin(newSave('rachit'), HILL_STATION, nov(16))
+  const id = rachit.pins[0].id
+  let deepika = applyPartnerCode(newSave('deepika'), makeShareCode(rachit, nov(16, 10)), nov(16, 10)).save
+  deepika = confirmPin(deepika, id)
+  rachit = removePin(rachit, id)
+  rachit = applyPartnerCode(rachit, makeShareCode(deepika, nov(16, 11)), nov(16, 11)).save
+  assert.deepEqual(rachit.pins, [])
+})
+
+test('a share code carries no photos and only pins with news', () => {
+  let save = addPin(newSave('rachit'), { ...HILL_STATION, photo: PHOTO }, nov(16))
+  save = { ...save, pins: [...save.pins, { ...save.pins[0], id: 'old', state: 'confirmed' }] }
+  const sent = pinsForCode(save)
+  assert.equal(sent.length, 1) // the confirmed one has no news
+  assert.equal(sent[0].photo, undefined)
+  assert.ok(!makeShareCode(save, nov(16)).includes('data:image'))
 })

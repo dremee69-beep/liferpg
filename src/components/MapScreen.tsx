@@ -28,7 +28,7 @@ import { iconForTerrain, MARKER_ICONS, markerIconOf } from '../game/markers.ts'
 import type { MarkerIconId } from '../game/markers.ts'
 import { canAddPin, pinsNewestFirst } from '../game/pins.ts'
 import type { PinInput, PinLook } from '../game/pins.ts'
-import { MAX_PIN_NAME_LENGTH, PIN_MARKER_SIZE } from '../game/rules.ts'
+import { MAX_PIN_NAME_LENGTH, PIN_MARKER_SIZE, PLAYERS } from '../game/rules.ts'
 import { townLabelSize, townLabelsFor } from '../game/towns.ts'
 import type { MapView } from '../game/towns.ts'
 import { loadHeights } from '../map/heights.ts'
@@ -55,6 +55,8 @@ type Props = {
     changes: { name: string; date: string; bucketList: boolean } & PinLook,
   ) => void
   onRemovePin: (pinId: string) => void
+  onConfirmPin: (pinId: string) => void // a pin your partner dropped
+  onDeclinePin: (pinId: string) => void
 }
 
 // The terrain picture lives in the public folder. BASE_URL is the app's
@@ -106,6 +108,13 @@ function gridPointOf(event: MouseEvent<SVGSVGElement>): GridPoint | null {
   return [point.x, point.y]
 }
 
+// Where a pin stands with your partner, in a couple of words.
+function pinStatus(pin: Pin, mine: boolean, partnerName: string): string {
+  if (pin.state === 'confirmed') return 'Together'
+  if (pin.state === 'declined') return mine ? `Declined by ${partnerName}` : 'You declined'
+  return mine ? `Waiting for ${partnerName}` : 'Waiting for you'
+}
+
 // "7 Nov 2026"
 function describeDate(date: string): string {
   return dateFromDayKey(date).toLocaleDateString([], {
@@ -132,7 +141,17 @@ const HIGHEST_METRES = 9000
 //   'exact'  zoomed in close, waiting for (or adjusting) the exact tap.
 type Mode = 'view' | 'rough' | 'exact'
 
-export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Props) {
+export function MapScreen({
+  save,
+  now,
+  onAddPin,
+  onUpdatePin,
+  onRemovePin,
+  onConfirmPin,
+  onDeclinePin,
+}: Props) {
+  // The other player's name, e.g. "Deepika" on Rachit's phone.
+  const partnerName = PLAYERS.find((p) => p.id !== save.player)?.name ?? 'your partner'
   // The id of the state that is zoomed in on, or null for all of India.
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // A close-up view, when there is one: where it is centred and how wide.
@@ -495,7 +514,9 @@ export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Pro
               "nearer" on the map. */}
           <g className="map-pins">
             <MarkerIconDrawings />
-            {[...save.pins]
+            {save.pins
+              // A declined pin was not a trip together: it stays off the map.
+              .filter((pin) => pin.state !== 'declined')
               .sort((a, b) => b.lat - a.lat)
               .map((pin) => {
                 const [x, y] = lonLatToGrid(pin.lon, pin.lat)
@@ -683,10 +704,17 @@ export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Pro
                   </form>
                 </li>
               ) : (
-                <li key={pin.id} className="pin-item">
+                <li
+                  key={pin.id}
+                  className={
+                    pin.by !== save.player && pin.state === 'pending'
+                      ? 'pin-item pin-item-waiting'
+                      : 'pin-item'
+                  }
+                >
                   <MarkerPreview
                     icon={markerIconOf(pin)}
-                    photo={pin.photo ?? null}
+                    photo={pin.by === save.player ? (pin.photo ?? null) : null}
                     bucketList={pin.bucketList}
                   />
                   <div className="activity-text">
@@ -695,18 +723,38 @@ export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Pro
                       {pin.stateName} · {describeHeight(pin.metres)} ·{' '}
                       {terrainName(pin.terrain)}
                     </span>
-                    <span className="activity-meta">{describeDate(pin.date)}</span>
-                    {(isMountainHeight(pin.metres) || pin.bucketList) && (
-                      <span className="pin-chips">
-                        {isMountainHeight(pin.metres) && (
-                          <span className="points-chip">Mountain</span>
-                        )}
-                        {pin.bucketList && (
-                          <span className="points-chip">Bucket list</span>
-                        )}
+                    <span className="activity-meta">
+                      {describeDate(pin.date)}
+                      {pin.by !== save.player && ` · added by ${partnerName}`}
+                    </span>
+                    <span className="pin-chips">
+                      <span className="points-chip">
+                        {pinStatus(pin, pin.by === save.player, partnerName)}
                       </span>
-                    )}
+                      {isMountainHeight(pin.metres) && (
+                        <span className="points-chip">Mountain</span>
+                      )}
+                      {pin.bucketList && <span className="points-chip">Bucket list</span>}
+                    </span>
                   </div>
+                  {pin.by !== save.player && pin.state === 'pending' && (
+                    <div className="button-row pin-decide">
+                      <button
+                        type="button"
+                        className="button"
+                        onClick={() => onDeclinePin(pin.id)}
+                      >
+                        Not together
+                      </button>
+                      <button
+                        type="button"
+                        className="button button-strong"
+                        onClick={() => onConfirmPin(pin.id)}
+                      >
+                        Confirm
+                      </button>
+                    </div>
+                  )}
                   <div className="pin-buttons">
                     <button
                       type="button"
@@ -722,13 +770,16 @@ export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Pro
                     >
                       Show
                     </button>
-                    <button
-                      type="button"
-                      className="link-button"
-                      onClick={() => startEditing(pin)}
-                    >
-                      Edit
-                    </button>
+                    {/* Only the player who dropped a pin can change it. */}
+                    {pin.by === save.player && (
+                      <button
+                        type="button"
+                        className="link-button"
+                        onClick={() => startEditing(pin)}
+                      >
+                        Edit
+                      </button>
+                    )}
                     <ConfirmButton label="Remove" onConfirm={() => onRemovePin(pin.id)} />
                   </div>
                 </li>
@@ -737,8 +788,9 @@ export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Pro
           </ul>
         )}
         <p className="challenge-hint">
-          Pins stay on this phone for now. Sharing them with your partner
-          comes in the next update.
+          New pins wait for {partnerName} to confirm you went together. Send
+          your share code from Camp to pass them on; photos stay on this
+          phone. Removing a pin only removes it here.
         </p>
       </section>
 

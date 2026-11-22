@@ -3,8 +3,14 @@
 // out where it is, how high and what terrain (see geo.ts and
 // src/map/heights.ts); this file keeps the list of pins in the save.
 //
-// For now a pin belongs to the player who dropped it and waits to be shared.
-// Sending it to your partner and confirming it come in a later update.
+// Only places you visited TOGETHER go on the shared map, so a new pin waits
+// ("pending") until your partner confirms it. Like party quests (party.ts),
+// this travels through share codes:
+//   1. You drop a pin. It shows on your map, waiting.
+//   2. Your next share code carries it to your partner (without the photo:
+//      photos stay on the phone that took them).
+//   3. Your partner confirms it (or declines it) on their Map screen.
+//   4. Their next share code carries the answer back to your phone.
 //
 // Like the other game files, nothing here changes the save it is given: each
 // function hands back a fresh copy, or the very same save when nothing changed.
@@ -13,7 +19,7 @@ import { dayKey } from './dates.ts'
 import type { TerrainId } from './geo.ts'
 import { isMarkerIcon, isPinPhoto } from './markers.ts'
 import type { MarkerIconId } from './markers.ts'
-import { MAX_PIN_NAME_LENGTH, MAX_PINS } from './rules.ts'
+import { MAX_PIN_NAME_LENGTH, MAX_PINS, PINS_IN_CODE } from './rules.ts'
 import type { Pin, SaveData } from '../storage/save.ts'
 
 // What the Map screen hands over to create a pin. The player types the
@@ -110,6 +116,8 @@ export function updatePin(
   if (old === undefined || name === null || !isVisitDate(changes.date, now)) {
     return save
   }
+  // Only the player who dropped a pin can change it.
+  if (old.by !== save.player) return save
   const look = lookFields(changes)
   if (
     old.name === name &&
@@ -140,4 +148,99 @@ export function removePin(save: SaveData, pinId: string): SaveData {
 // The pins in the order the list shows them: latest visit first.
 export function pinsNewestFirst(save: SaveData): Pin[] {
   return [...save.pins].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+}
+
+// ---------------------------------------------------------------------------
+// Sharing pins with your partner
+// ---------------------------------------------------------------------------
+
+// Swap one pin for a changed copy.
+function withPin(save: SaveData, changed: Pin): SaveData {
+  return { ...save, pins: save.pins.map((pin) => (pin.id === changed.id ? changed : pin)) }
+}
+
+// A copy of a pin without its photo (photos never leave the phone).
+function withoutPhoto(pin: Pin): Pin {
+  const { photo: _photo, ...rest } = pin
+  return rest
+}
+
+// Confirm a pin your PARTNER dropped: yes, we went there together.
+// Does nothing for your own pins, or ones already decided.
+export function confirmPin(save: SaveData, pinId: string): SaveData {
+  const pin = save.pins.find((p) => p.id === pinId)
+  if (pin === undefined || pin.by === save.player || pin.state !== 'pending') return save
+  return withPin(save, { ...pin, state: 'confirmed' })
+}
+
+// Say no to a pin your partner dropped (for example, a solo trip).
+export function declinePin(save: SaveData, pinId: string): SaveData {
+  const pin = save.pins.find((p) => p.id === pinId)
+  if (pin === undefined || pin.by === save.player || pin.state !== 'pending') return save
+  return withPin(save, { ...pin, state: 'declined' })
+}
+
+// The pins that travel in a share code: the ones with news for the partner.
+//   - yours that are still waiting for them to confirm;
+//   - theirs that you have confirmed or declined, so their phone learns.
+// The newest few only, and never the photo.
+export function pinsForCode(save: SaveData): Pin[] {
+  return save.pins
+    .filter((pin) =>
+      pin.by === save.player ? pin.state === 'pending' : pin.state !== 'pending',
+    )
+    .slice(-PINS_IN_CODE)
+    .map(withoutPhoto)
+}
+
+// What changed when a partner's code was read.
+export type PinNews = {
+  toConfirm: Pin[] // new pins the partner dropped, waiting for you
+  confirmed: Pin[] // your pins the partner confirmed
+  declined: Pin[] // your pins the partner declined
+}
+
+export const NO_PIN_NEWS: PinNews = { toConfirm: [], confirmed: [], declined: [] }
+
+// Take in the pins from a partner's share code.
+//   - A pin THEY dropped that this phone has not seen is added, waiting for
+//     you to confirm (if there is room).
+//   - A pin YOU dropped that they confirmed or declined is marked so here.
+//     If you have removed that pin since, nothing happens.
+// Everything else is left as it is, so reading the same code twice changes
+// nothing the second time.
+export function mergePins(
+  save: SaveData,
+  incoming: Pin[],
+): { save: SaveData; news: PinNews } {
+  const news: PinNews = { toConfirm: [], confirmed: [], declined: [] }
+  let next = save
+
+  for (const theirs of incoming) {
+    const mine = next.pins.find((pin) => pin.id === theirs.id)
+
+    if (theirs.by !== save.player) {
+      // Dropped by the partner. Only news if this phone has never seen it.
+      if (mine === undefined && theirs.state === 'pending' && canAddPin(next)) {
+        const arrived = withoutPhoto(theirs)
+        next = { ...next, pins: [...next.pins, arrived] }
+        news.toConfirm.push(arrived)
+      }
+      continue
+    }
+
+    // Dropped by this player: the partner's code says what they decided.
+    if (mine === undefined || mine.state !== 'pending') continue
+    if (theirs.state === 'confirmed') {
+      const confirmed: Pin = { ...mine, state: 'confirmed' }
+      next = withPin(next, confirmed)
+      news.confirmed.push(confirmed)
+    } else if (theirs.state === 'declined') {
+      const declined: Pin = { ...mine, state: 'declined' }
+      next = withPin(next, declined)
+      news.declined.push(declined)
+    }
+  }
+
+  return { save: next, news }
 }

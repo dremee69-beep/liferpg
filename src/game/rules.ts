@@ -64,6 +64,9 @@ export const PARTY_LOGS_IN_CODE = 20
 export const MOUNTAIN_METRES = 1500
 export const MAX_PINS = 200
 export const MAX_PIN_NAME_LENGTH = 40
+// The most pins a share code carries (photos never travel). Only pins with
+// news for the partner go: yours waiting for them, and theirs you decided.
+export const PINS_IN_CODE = 20
 // A pin's photo is shrunk to a square this many pixels wide (about 10 KB)
 // so 200 of them fit easily in the phone's save space.
 export const PIN_PHOTO_SIZE = 128

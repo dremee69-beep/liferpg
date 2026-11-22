@@ -5,8 +5,8 @@
 //
 // A share code holds a small summary only: who you are, your XP in each
 // realm, your shields, when the code was made, and your latest party quests
-// (so your partner can confirm them). It never holds your dailies,
-// challenges, epic quests or history.
+// and map pins (so your partner can confirm them). It never holds your
+// dailies, challenges, epic quests, history or photos.
 //
 // Like the other game files, nothing here changes the save it is given.
 
@@ -15,8 +15,10 @@ import type { PlayerId } from './rules.ts'
 import type { RealmXp } from './xp.ts'
 import { mergePartyLogs, partyLogsForCode } from './party.ts'
 import type { PartyNews } from './party.ts'
-import { readPartyLogs } from '../storage/save.ts'
-import type { PartyLog, SaveData } from '../storage/save.ts'
+import { mergePins, NO_PIN_NEWS, pinsForCode } from './pins.ts'
+import type { PinNews } from './pins.ts'
+import { readPartyLogs, readPins } from '../storage/save.ts'
+import type { PartyLog, Pin, SaveData } from '../storage/save.ts'
 
 // What a share code says about a player.
 export type PartnerSummary = {
@@ -63,8 +65,9 @@ export function makeShareCode(save: SaveData, now: Date): string {
     shields: save.shields,
     at: now.toISOString(),
   }
-  // The latest party quests ride along next to the summary.
-  return PREFIX + encode(JSON.stringify({ ...summary, party: partyLogsForCode(save) }))
+  // The latest party quests and pins ride along next to the summary.
+  const extras = { party: partyLogsForCode(save), pins: pinsForCode(save) }
+  return PREFIX + encode(JSON.stringify({ ...summary, ...extras }))
 }
 
 // Checks that loaded data really is a partner summary. Returns a clean copy,
@@ -102,7 +105,7 @@ export function readPartnerSummary(value: unknown): PartnerSummary | null {
 // Returns null when there is no code, or it is damaged.
 export function readShareCode(
   text: string,
-): { summary: PartnerSummary; party: PartyLog[] } | null {
+): { summary: PartnerSummary; party: PartyLog[]; pins: Pin[] } | null {
   const found = text.match(/LRPG1\.([A-Za-z0-9_-]+)/)
   if (found === null) return null
   const json = decode(found[1])
@@ -113,7 +116,11 @@ export function readShareCode(
     if (summary === null) return null
     // A code from before party quests existed simply has none.
     const party = readPartyLogs((data as { party?: unknown }).party)
-    return { summary, party }
+    // The same for pins. A photo is never taken from a code.
+    const pins = readPins((data as { pins?: unknown }).pins).map(
+      ({ photo: _photo, ...pin }) => pin,
+    )
+    return { summary, party, pins }
   } catch {
     return null // the code was cut short or changed
   }
@@ -130,30 +137,34 @@ export function readShareCode(
 export type ShareProblem = 'unreadable' | 'own' | 'older'
 
 // What the screen is told after a code was pasted: the problem (if it was
-// not used) and the party quest news (if it was).
-export type PartnerCodeResult = { problem: ShareProblem | null; news: PartyNews }
+// not used) and the party quest and pin news (if it was).
+export type PartnerCodeResult = {
+  problem: ShareProblem | null
+  news: PartyNews
+  pinNews: PinNews
+}
 
 const NO_NEWS: PartyNews = { toConfirm: [], confirmed: [], declined: [] }
 
 // Remember what a partner's code says, and take in its party quests (which
-// may pay XP for ones the partner confirmed). Hands back the new save and
-// the party quest news, or the very same save together with the problem.
+// may pay XP for ones the partner confirmed) and its pins. Hands back the
+// new save and the news, or the very same save together with the problem.
 export function applyPartnerCode(
   save: SaveData,
   text: string,
   now: Date,
-): { save: SaveData; problem: ShareProblem | null; news: PartyNews } {
+): { save: SaveData } & PartnerCodeResult {
+  const nothing = { save, news: NO_NEWS, pinNews: NO_PIN_NEWS }
   const code = readShareCode(text)
-  if (code === null) return { save, problem: 'unreadable', news: NO_NEWS }
-  if (code.summary.player === save.player) {
-    return { save, problem: 'own', news: NO_NEWS }
-  }
+  if (code === null) return { ...nothing, problem: 'unreadable' }
+  if (code.summary.player === save.player) return { ...nothing, problem: 'own' }
   // ISO date text sorts correctly as plain text.
   if (save.partner !== null && code.summary.at < save.partner.at) {
-    return { save, problem: 'older', news: NO_NEWS }
+    return { ...nothing, problem: 'older' }
   }
-  const merged = mergePartyLogs({ ...save, partner: code.summary }, code.party, now)
-  return { save: merged.save, problem: null, news: merged.news }
+  const party = mergePartyLogs({ ...save, partner: code.summary }, code.party, now)
+  const pins = mergePins(party.save, code.pins)
+  return { save: pins.save, problem: null, news: party.news, pinNews: pins.news }
 }
 
 // How many whole days ago a code was made: 0 for today, 1 for yesterday...

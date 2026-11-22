@@ -1398,6 +1398,17 @@ h3 {
   background: var(--card);
 }
 
+/* A pin your partner dropped, waiting for you: a sunny card that stands out,
+   with Confirm / Not together across the full width. */
+.pin-item-waiting {
+  background: #fff4d6;
+  box-shadow: var(--shadow-small);
+}
+
+.pin-decide {
+  grid-column: 1 / -1;
+}
+
 .pin-chips {
   display: flex;
   flex-wrap: wrap;

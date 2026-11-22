@@ -46,7 +46,14 @@ import {
   logPartyQuest,
   removePartyQuest,
 } from './game/party.ts'
-import { addPin, removePin, updatePin } from './game/pins.ts'
+import {
+  addPin,
+  confirmPin,
+  declinePin,
+  NO_PIN_NEWS,
+  removePin,
+  updatePin,
+} from './game/pins.ts'
 import { applyPartnerCode } from './game/share.ts'
 import type { PartnerCodeResult } from './game/share.ts'
 import {
@@ -316,17 +323,18 @@ function App() {
   }
 
   // A partner's share code was pasted in Camp. Tells Camp why it was not
-  // used, or what party quest news the code brought.
+  // used, or what party quest and pin news the code brought.
   function handlePartnerCode(text: string): PartnerCodeResult {
     if (save === null) {
       return {
         problem: 'unreadable',
         news: { toConfirm: [], confirmed: [], declined: [] },
+        pinNews: NO_PIN_NEWS,
       }
     }
     const result = applyPartnerCode(save, text, new Date())
     if (result.problem === null) commitPartyGain(save, result.save)
-    return { problem: result.problem, news: result.news }
+    return { problem: result.problem, news: result.news, pinNews: result.pinNews }
   }
 
   // Confirming a party quest the partner logged: pays the Together XP.
@@ -460,6 +468,8 @@ function App() {
             commitIfChanged(updatePin(save, pinId, changes, new Date()))
           }
           onRemovePin={(pinId) => commitIfChanged(removePin(save, pinId))}
+          onConfirmPin={(pinId) => commitIfChanged(confirmPin(save, pinId))}
+          onDeclinePin={(pinId) => commitIfChanged(declinePin(save, pinId))}
         />
       )}
       {screen === 'camp' && (

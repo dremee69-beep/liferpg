@@ -64,7 +64,7 @@ export function SharePanel({ save, now, onPartnerCode }: Props) {
   }
 
   function handleUse() {
-    const { problem, news } = onPartnerCode(pasted)
+    const { problem, news, pinNews } = onPartnerCode(pasted)
     if (problem !== null) {
       setNote({ text: PROBLEM_TEXT[problem], ok: false })
       return
@@ -86,6 +86,17 @@ export function SharePanel({ save, now, onPartnerCode }: Props) {
       const names = news.declined.map((log) => log.name).join(', ')
       lines.push(`${partnerName} declined: ${names}.`)
     }
+    // Then the map pins.
+    const pinNames = (pins: { name: string }[]) => pins.map((pin) => pin.name).join(', ')
+    if (pinNews.confirmed.length > 0) {
+      lines.push(`${partnerName} confirmed your pins: ${pinNames(pinNews.confirmed)}.`)
+    }
+    if (pinNews.toConfirm.length > 0) {
+      lines.push(`New pins to confirm on the Map: ${pinNames(pinNews.toConfirm)}.`)
+    }
+    if (pinNews.declined.length > 0) {
+      lines.push(`${partnerName} declined these pins: ${pinNames(pinNews.declined)}.`)
+    }
     setNote({ text: lines.join(' '), ok: true })
   }
 
@@ -94,9 +105,9 @@ export function SharePanel({ save, now, onPartnerCode }: Props) {
       <h2>Share with your partner</h2>
       <p className="panel-text">
         A share code shows your partner your levels and shields, and carries
-        your party quests to them for confirming. Send yours on WhatsApp, and
-        paste theirs below. It holds no dailies, challenges, epic quests or
-        history.
+        your party quests and map pins to them for confirming. Send yours on
+        WhatsApp, and paste theirs below. It holds no dailies, challenges,
+        epic quests, history or photos.
       </p>
 
       <button
