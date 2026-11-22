@@ -69,6 +69,12 @@ export const MAX_PIN_NAME_LENGTH = 40
 // How tall the letters are, as a share of the map's width on screen
 // (0.032 is about 11 pixels on a phone). Bigger letters = fewer towns fit.
 export const TOWN_LABEL_SIZE = 0.032
+
+// MAP DECORATIONS (trees, landmarks, clouds...). How big each picture is,
+// as a share of the map's width on screen, the same way as the town names:
+// 0.08 is about 28 pixels on a phone, at every zoom.
+export const DECORATION_SIZE = 0.08
+export const LANDMARK_SIZE = 0.115
 // Only this many of the most important towns on screen are considered.
 // It stops tiny places filling the gaps when the whole country is in view.
 export const TOWN_LABEL_CANDIDATES = 500

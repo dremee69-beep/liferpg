@@ -35,6 +35,7 @@ import { INDIA_MAP } from '../map/india.ts'
 import { INDIA_TOWNS } from '../map/towns.ts'
 import type { Pin, SaveData } from '../storage/save.ts'
 import { ConfirmButton } from './ConfirmButton.tsx'
+import { MapDecorations } from './MapDecorations.tsx'
 
 type Props = {
   save: SaveData
@@ -356,6 +357,9 @@ export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Pro
 
           {/* India's outline, on top of the states. */}
           <path d={INDIA_MAP.outline} className="map-outline" />
+
+          {/* Trees, mountains, landmarks, clouds, waves, boats and birds. */}
+          <MapDecorations view={view} />
 
           {/* The town names: a small dot with the name beside it. They are
               sized from the view, so they look the same at every zoom. */}

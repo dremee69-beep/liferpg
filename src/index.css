@@ -1186,6 +1186,90 @@ h3 {
   dominant-baseline: central;
 }
 
+/* The decorations (trees, landmarks, clouds...) are only for looks: taps
+   pass straight through them to the map. */
+.map-decorations {
+  pointer-events: none;
+}
+
+/* The moving bits. Each moves in its drawing's own 64 x 64 units, so it
+   moves the same distance on screen at every zoom. "fill-box" makes the
+   turning point the middle of the drawing itself. */
+.map-deco {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Clouds drift slowly to one side and back. */
+.map-deco-cloud {
+  animation: deco-drift 9s ease-in-out infinite alternate;
+}
+
+/* Waves rise and fall. */
+.map-deco-wave {
+  animation: deco-bob 2.6s ease-in-out infinite;
+}
+
+/* Boats rock from side to side. */
+.map-deco-boat {
+  animation: deco-rock 3.2s ease-in-out infinite;
+}
+
+/* Birds flap their wings and glide a little way. */
+.map-deco-birds {
+  animation:
+    deco-flap 0.7s ease-in-out infinite,
+    deco-glide 6s ease-in-out infinite alternate;
+}
+
+@keyframes deco-drift {
+  from {
+    translate: -14px 0;
+  }
+  to {
+    translate: 14px 0;
+  }
+}
+
+@keyframes deco-bob {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -5px;
+  }
+}
+
+@keyframes deco-rock {
+  0%,
+  100% {
+    rotate: -6deg;
+  }
+  50% {
+    rotate: 6deg;
+  }
+}
+
+@keyframes deco-flap {
+  0%,
+  100% {
+    scale: 1 1;
+  }
+  50% {
+    scale: 1 -0.5;
+  }
+}
+
+@keyframes deco-glide {
+  from {
+    translate: -10px 2px;
+  }
+  to {
+    translate: 10px -2px;
+  }
+}
+
 /* A pin: a coloured dot with a dark edge. Both are "lines" of no length
    with thick round ends, so they stay the same size at every zoom. */
 .map-pin-edge,
@@ -1765,7 +1849,8 @@ h3 {
 /* Respect the phone's "reduce motion" setting: no movement, gentle fades. */
 @media (prefers-reduced-motion: reduce) {
   .daily-just-ticked .daily-box,
-  .celebration-icon {
+  .celebration-icon,
+  .map-deco {
     animation: none;
   }
   .celebration-card {
