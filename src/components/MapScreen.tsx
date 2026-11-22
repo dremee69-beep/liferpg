@@ -24,7 +24,7 @@ import {
   terrainName,
 } from '../game/geo.ts'
 import type { GridPoint, PlaceState, TerrainId } from '../game/geo.ts'
-import { mapMilestones, missingExplorerQuests } from '../game/mapMilestones.ts'
+import { isAbroadPin, mapMilestones, missingExplorerQuests } from '../game/mapMilestones.ts'
 import { iconForTerrain, MARKER_ICONS, markerIconOf } from '../game/markers.ts'
 import type { MarkerIconId } from '../game/markers.ts'
 import { canAddPin, pinsNewestFirst } from '../game/pins.ts'
@@ -36,6 +36,7 @@ import {
   PLAYERS,
 } from '../game/rules.ts'
 import { townLabelSize, townLabelsFor } from '../game/towns.ts'
+import { abroadStateId, countryAt, worldGridToLonLat, worldLonLatToGrid } from '../game/world.ts'
 import type { MapView } from '../game/towns.ts'
 import { loadHeights } from '../map/heights.ts'
 import type { Heights } from '../map/heights.ts'
@@ -51,6 +52,8 @@ import {
   PinMarker,
 } from './PinMarker.tsx'
 import { shrinkPhoto } from './shrinkPhoto.ts'
+import { WorldMap } from './WorldMap.tsx'
+import type { WorldData } from './WorldMap.tsx'
 
 type Props = {
   save: SaveData
@@ -81,17 +84,31 @@ const SMALLEST_VIEW = 120
 const PLACING_WIDTH = 60
 const SHOWING_WIDTH = 200
 
-// A view of the given width centred on a point, in the map's own shape.
-function viewAround([x, y]: GridPoint, width: number): MapView {
-  const height = width / MAP_SHAPE
+// The WORLD view uses its own grid (src/map/world.ts), 1000 units across:
+// one unit is about 40 km at the equator.
+// Never zoom a country closer than this many units wide...
+const WORLD_SMALLEST_VIEW = 24
+// ...and place a pin on a view this wide (about 600 km across).
+const WORLD_PLACING_WIDTH = 16
+const WORLD_SHOWING_WIDTH = 40
+// Zoomed-in world views are drawn a little taller than wide, like the India
+// map, so a country fills the screen; the whole world keeps its own shape.
+
+// A view of the given width centred on a point. `shape` is width / height.
+function viewAround([x, y]: GridPoint, width: number, shape = MAP_SHAPE): MapView {
+  const height = width / shape
   return { left: x - width / 2, top: y - height / 2, width, height }
 }
 
-// The part of the map to show for one state: its box plus a margin.
-function viewForState(box: readonly [number, number, number, number]): MapView {
+// The part of the map to show for one state (or country): its box plus a
+// margin, never closer than `smallest` units wide.
+function viewForState(
+  box: readonly [number, number, number, number],
+  smallest = SMALLEST_VIEW,
+): MapView {
   const [left, top, width, height] = box
-  let viewWidth = Math.max(width * (1 + ZOOM_MARGIN * 2), SMALLEST_VIEW)
-  const viewHeight = Math.max(height * (1 + ZOOM_MARGIN * 2), SMALLEST_VIEW / MAP_SHAPE)
+  let viewWidth = Math.max(width * (1 + ZOOM_MARGIN * 2), smallest)
+  const viewHeight = Math.max(height * (1 + ZOOM_MARGIN * 2), smallest / MAP_SHAPE)
   // Widen the view if the state is taller than the map's shape allows.
   viewWidth = Math.max(viewWidth, viewHeight * MAP_SHAPE)
   return viewAround([left + width / 2, top + height / 2], viewWidth)
@@ -122,6 +139,12 @@ function pinStatus(pin: Pin, mine: boolean, partnerName: string): string {
   return mine ? `Waiting for ${partnerName}` : 'Waiting for you'
 }
 
+// "about 2,050 m · " for the pin details. Abroad, a height of 0 means
+// nobody typed one, so it is left out.
+function heightLabel(metres: number, abroad: boolean): string {
+  return abroad && metres === 0 ? '' : `${describeHeight(metres)} · `
+}
+
 // "7 Nov 2026"
 function describeDate(date: string): string {
   return dateFromDayKey(date).toLocaleDateString([], {
@@ -132,12 +155,18 @@ function describeDate(date: string): string {
 }
 
 // What the app worked out about the spot being pinned.
+// Abroad, `state` is the country (its id starts with "abroad-"), and the
+// height is not known: the player types it.
 type Spot = {
   point: GridPoint
   state: PlaceState
-  metres: number // the height the map read at this spot
+  metres: number // the height the map read at this spot (0 abroad)
   nearSea: boolean
+  abroad: boolean // true when placed on the world map
 }
+
+// Which map is showing.
+type Region = 'india' | 'world'
 
 // The highest a typed height may be (a little above the highest peak).
 const HIGHEST_METRES = 9000
@@ -169,6 +198,14 @@ export function MapScreen({
     null,
   )
   const [mode, setMode] = useState<Mode>('view')
+  // India or the world. The world outlines are loaded the first time the
+  // World view is opened (they are big, and most pins are in India).
+  const [region, setRegion] = useState<Region>('india')
+  const [world, setWorld] = useState<WorldData | null>(null)
+  // The country zoomed in on in the World view, or null for the whole world.
+  const [countryId, setCountryId] = useState<string | null>(null)
+  // Abroad there is no height data: "near the sea" is ticked by the player.
+  const [nearSeaTicked, setNearSeaTicked] = useState(false)
   const [heights, setHeights] = useState<Heights | null>(null)
   const [spot, setSpot] = useState<Spot | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -193,13 +230,69 @@ export function MapScreen({
   const pins = pinsNewestFirst(save)
   const today = dayKey(now)
 
+  const country = world?.countries.find((c) => c.id === countryId)
+  // Countries with a pin you both confirmed: painted green on the world map.
+  const visited = useMemo(
+    () =>
+      new Set(
+        save.pins
+          .filter((pin) => pin.state === 'confirmed' && isAbroadPin(pin))
+          .map((pin) => pin.stateId.slice('abroad-'.length)),
+      ),
+    [save.pins],
+  )
+
   // The part of the map on screen.
-  const view = closeUp
-    ? viewAround(closeUp.centre, closeUp.width)
-    : selected
-      ? viewForState(selected.box)
-      : WHOLE_MAP
+  const view =
+    region === 'world' && world !== null
+      ? closeUp
+        ? viewAround(closeUp.centre, closeUp.width)
+        : country
+          ? viewForState(country.box, WORLD_SMALLEST_VIEW)
+          : { left: 0, top: 0, width: world.width, height: world.height }
+      : closeUp
+        ? viewAround(closeUp.centre, closeUp.width)
+        : selected
+          ? viewForState(selected.box)
+          : WHOLE_MAP
   const viewBox = `${view.left} ${view.top} ${view.width} ${view.height}`
+
+  // Switch between the India and World maps (loading the world the first
+  // time). Anything half done is dropped. Hands back the world map, if it
+  // is (now) loaded.
+  async function showRegion(next: Region): Promise<WorldData | null> {
+    stopAdding()
+    setSelectedId(null)
+    setCountryId(null)
+    let loadedWorld = world
+    if (next === 'world' && loadedWorld === null) {
+      try {
+        loadedWorld = (await import('../map/world.ts')).WORLD_MAP
+        setWorld(loadedWorld)
+      } catch {
+        setMessage('The world map could not be loaded. Check your internet and try again.')
+        return null
+      }
+    }
+    setRegion(next)
+    return loadedWorld
+  }
+
+  // "Show" on a pin in the list: open its map, zoomed in on it.
+  async function showPin(pin: Pin) {
+    if (isAbroadPin(pin)) {
+      const loadedWorld = await showRegion('world')
+      if (loadedWorld === null) return
+      setCloseUp({
+        centre: worldLonLatToGrid(loadedWorld, pin.lon, pin.lat),
+        width: WORLD_SHOWING_WIDTH,
+      })
+    } else {
+      await showRegion('india')
+      setCloseUp({ centre: lonLatToGrid(pin.lon, pin.lat), width: SHOWING_WIDTH })
+    }
+    window.scrollTo(0, 0)
+  }
 
   // The town names that fit on this view. Worked out again only when the
   // view changes ("useMemo" remembers the answer in between).
@@ -234,6 +327,13 @@ export function MapScreen({
     setIcon(null)
     setPhoto(null)
     setPhotoError(null)
+    setNearSeaTicked(false)
+    if (region === 'world') {
+      // Abroad needs no height data: the player types the height.
+      setCloseUp(null)
+      setMode('rough')
+      return
+    }
     try {
       setHeights(await loadHeights())
       setCloseUp(null)
@@ -243,9 +343,56 @@ export function MapScreen({
     }
   }
 
+  // A tap on the WORLD map.
+  function handleWorldTap(point: GridPoint) {
+    if (world === null) return
+    const tapped = countryAt(world.countries, point)
+
+    if (mode === 'view') {
+      // India is pinned on its own, more detailed map.
+      if (tapped?.id === 'in') {
+        void showRegion('india')
+        return
+      }
+      setCloseUp(null)
+      setCountryId(tapped === null || tapped.id === countryId ? null : tapped.id)
+      return
+    }
+
+    if (mode === 'rough') {
+      setCloseUp({ centre: point, width: WORLD_PLACING_WIDTH })
+      setMode('exact')
+      return
+    }
+
+    if (tapped === null) {
+      setSpot(null)
+      setMessage('That spot is in the sea. Tap on land.')
+      return
+    }
+    if (tapped.id === 'in') {
+      setSpot(null)
+      setMessage('That is India: switch to the India map to pin places there.')
+      return
+    }
+    setMessage(null)
+    setHeightText('0')
+    setSpot({
+      point,
+      state: { id: abroadStateId(tapped.id), name: tapped.name },
+      metres: 0,
+      nearSea: false,
+      abroad: true,
+    })
+  }
+
   function handleMapTap(event: MouseEvent<SVGSVGElement>) {
     const point = gridPointOf(event)
     if (point === null) return
+    if (region === 'world') {
+      handleWorldTap(point)
+      return
+    }
 
     if (mode === 'view') {
       // Looking around: a tap on a state zooms to it (or back out of it).
@@ -266,20 +413,21 @@ export function MapScreen({
     const state = stateAt(point)
     if (state === null || heights === null) {
       setSpot(null)
-      setMessage(
-        'That spot is outside India. Pins for trips abroad come with the world map.',
-      )
+      setMessage('That spot is outside India. Use the World map for trips abroad.')
       return
     }
     const { metres, nearSea } = heights.at(point)
     setMessage(null)
     setHeightText(String(Math.round(metres / 10) * 10))
-    setSpot({ point, state, metres, nearSea })
+    setSpot({ point, state, metres, nearSea, abroad: false })
   }
 
   function handleSaveNewPin() {
     if (spot === null) return
-    const { lon, lat } = gridToLonLat(spot.point)
+    const { lon, lat } =
+      spot.abroad && world !== null
+        ? worldGridToLonLat(world, spot.point)
+        : gridToLonLat(spot.point)
     onAddPin({
       name,
       date,
@@ -294,7 +442,10 @@ export function MapScreen({
       photo,
     })
     // Stay zoomed where the new pin is, a little further out.
-    setCloseUp({ centre: spot.point, width: SHOWING_WIDTH })
+    setCloseUp({
+      centre: spot.point,
+      width: spot.abroad ? WORLD_SHOWING_WIDTH : SHOWING_WIDTH,
+    })
     setMode('view')
     setSpot(null)
   }
@@ -338,7 +489,12 @@ export function MapScreen({
   const spotTerrain: TerrainId =
     spot === null
       ? 'plains'
-      : terrainFor({ metres: spotMetres, nearSea: spot.nearSea, stateId: spot.state.id })
+      : terrainFor({
+          metres: spotMetres,
+          // Abroad, "near the sea" is what the player ticked.
+          nearSea: spot.abroad ? nearSeaTicked : spot.nearSea,
+          stateId: spot.state.id,
+        })
 
   // The fields shared by "new pin" and "edit pin". `terrain` is the pin's
   // terrain, used for the icon picked when the player picks none.
@@ -448,9 +604,16 @@ export function MapScreen({
     </>
   )
 
-  let subtitle = selected ? selected.name : 'India: tap a state to zoom in'
+  let subtitle =
+    region === 'world'
+      ? (country?.name ?? 'World: tap a country to zoom in')
+      : (selected?.name ?? 'India: tap a state to zoom in')
   if (mode === 'rough') subtitle = 'Tap roughly where the place is'
   if (mode === 'exact') subtitle = 'Now tap the exact spot'
+
+  // The pins drawn on each map. Declined pins were not trips together, so
+  // they stay off both maps.
+  const shownPins = save.pins.filter((pin) => pin.state !== 'declined')
 
   return (
     <main className="screen map-screen">
@@ -460,6 +623,39 @@ export function MapScreen({
       </header>
 
       <section className="panel map-panel">
+        {/* India or the world. */}
+        <div className="map-switch" role="group" aria-label="Which map">
+          <button
+            type="button"
+            className="map-switch-button"
+            aria-pressed={region === 'india'}
+            onClick={() => void showRegion('india')}
+          >
+            India
+          </button>
+          <button
+            type="button"
+            className="map-switch-button"
+            aria-pressed={region === 'world'}
+            onClick={() => void showRegion('world')}
+          >
+            World
+          </button>
+        </div>
+
+        {region === 'world' && world !== null ? (
+          <WorldMap
+            world={world}
+            view={view}
+            pins={shownPins}
+            player={save.player}
+            visited={visited}
+            selectedId={closeUp === null ? countryId : null}
+            spot={spot?.point ?? null}
+            placing={mode !== 'view'}
+            onTap={handleMapTap}
+          />
+        ) : (
         <svg
           className={mode === 'view' ? 'map' : 'map map-placing'}
           viewBox={viewBox}
@@ -527,9 +723,9 @@ export function MapScreen({
               "nearer" on the map. */}
           <g className="map-pins">
             <MarkerIconDrawings />
-            {save.pins
-              // A declined pin was not a trip together: it stays off the map.
-              .filter((pin) => pin.state !== 'declined')
+            {shownPins
+              // Pins abroad are shown on the World map.
+              .filter((pin) => !isAbroadPin(pin))
               .sort((a, b) => b.lat - a.lat)
               .map((pin) => {
                 const [x, y] = lonLatToGrid(pin.lon, pin.lat)
@@ -560,8 +756,47 @@ export function MapScreen({
             </g>
           )}
         </svg>
+        )}
 
-        {mode === 'view' ? (
+        {mode === 'view' && region === 'world' && world !== null ? (
+          <div className="map-controls">
+            <label className="field map-jump">
+              <span className="field-label">Jump to a country</span>
+              <select
+                className="edit-select"
+                value={closeUp === null ? (countryId ?? '') : ''}
+                onChange={(event) => {
+                  const picked = event.target.value
+                  if (picked === 'in') {
+                    void showRegion('india')
+                    return
+                  }
+                  setCloseUp(null)
+                  setCountryId(picked || null)
+                }}
+              >
+                <option value="">The whole world</option>
+                {world.countries.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {(country !== undefined || closeUp !== null) && (
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  setCloseUp(null)
+                  setCountryId(null)
+                }}
+              >
+                Whole world
+              </button>
+            )}
+          </div>
+        ) : mode === 'view' ? (
           <div className="map-controls">
             <label className="field map-jump">
               <span className="field-label">Jump to a state</span>
@@ -628,7 +863,8 @@ export function MapScreen({
             <p className="pin-facts">
               <strong>{spot.state.name}</strong>
               <span>
-                {describeHeight(spotMetres)} · {terrainName(spotTerrain)}
+                {heightLabel(spotMetres, spot.abroad)}
+                {terrainName(spotTerrain)}
               </span>
               {isMountainHeight(spotMetres) && (
                 <span className="points-chip">Mountain destination</span>
@@ -648,11 +884,21 @@ export function MapScreen({
                 onChange={(event) => setHeightText(event.target.value)}
               />
               <span className="challenge-hint">
-                The map read {describeHeight(spot.metres)} here. It can be a
-                few hundred metres off in steep hills, so change it if you
-                know the real height.
+                {spot.abroad
+                  ? 'The world map has no heights. Type it if you know it (a quick web search helps); it decides the terrain and mountain milestones.'
+                  : `The map read ${describeHeight(spot.metres)} here. It can be a few hundred metres off in steep hills, so change it if you know the real height.`}
               </span>
             </label>
+            {spot.abroad && (
+              <label className="check-row">
+                <input
+                  type="checkbox"
+                  checked={nearSeaTicked}
+                  onChange={(event) => setNearSeaTicked(event.target.checked)}
+                />
+                It is by the sea
+              </label>
+            )}
             <button
               type="submit"
               className="button button-strong button-wide"
@@ -733,7 +979,7 @@ export function MapScreen({
                   <div className="activity-text">
                     <span className="activity-what">{pin.name}</span>
                     <span className="activity-meta">
-                      {pin.stateName} · {describeHeight(pin.metres)} ·{' '}
+                      {pin.stateName} · {heightLabel(pin.metres, isAbroadPin(pin))}
                       {terrainName(pin.terrain)}
                     </span>
                     <span className="activity-meta">
@@ -772,14 +1018,7 @@ export function MapScreen({
                     <button
                       type="button"
                       className="link-button"
-                      onClick={() => {
-                        stopAdding()
-                        setCloseUp({
-                          centre: lonLatToGrid(pin.lon, pin.lat),
-                          width: SHOWING_WIDTH,
-                        })
-                        window.scrollTo(0, 0)
-                      }}
+                      onClick={() => void showPin(pin)}
                     >
                       Show
                     </button>

@@ -2016,3 +2016,58 @@ h3 {
   font-weight: 700;
   text-align: center;
 }
+
+/* ---------- Map: India / World switch and the world map ---------- */
+
+/* Two pill buttons side by side; the map showing is sunny yellow. */
+.map-switch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.map-switch-button {
+  flex: 1;
+  min-height: 44px;
+  border: var(--outline);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.map-switch-button[aria-pressed='true'] {
+  background: var(--sun);
+  box-shadow: var(--shadow-small);
+}
+
+/* Each country: plain sand with a thin ink edge, like the India map's
+   neighbours. "non-scaling-stroke" keeps the edge thin at every zoom. */
+.world-country {
+  fill: #e2d6ba;
+  stroke: var(--ink);
+  stroke-width: 0.8;
+  stroke-opacity: 0.6;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* India: gold. Tapping it opens the India map. */
+.world-country-india {
+  fill: #ecd670;
+}
+
+/* Countries you have visited together: lush green. */
+.world-country-visited {
+  fill: #7ece62;
+}
+
+/* The country zoomed in on: a bold edge. */
+.world-country-selected {
+  stroke-width: 2.5;
+  stroke-opacity: 1;
+}

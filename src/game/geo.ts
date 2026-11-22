@@ -50,11 +50,11 @@ export function gridToLonLat([x, y]: GridPoint): { lon: number; lat: number } {
 // ---------------------------------------------------------------------------
 
 // A ring is a closed loop of grid points; a shape is one or more rings.
-type Ring = GridPoint[]
+export type Ring = GridPoint[]
 
 // Reads the outline text from src/map/india.ts ("M x yL x y...Z") back into
 // rings of points.
-function ringsFromPath(path: string): Ring[] {
+export function ringsFromPath(path: string): Ring[] {
   return path
     .split('Z')
     .filter((part) => part !== '')
@@ -89,7 +89,7 @@ function getShapes() {
 
 // Is the point inside the shape? (Counts how many edges a line running to
 // the right from the point crosses: an odd number means inside.)
-function isInside(rings: Ring[], [x, y]: GridPoint): boolean {
+export function isInside(rings: Ring[], [x, y]: GridPoint): boolean {
   let inside = false
   for (const ring of rings) {
     for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -104,7 +104,7 @@ function isInside(rings: Ring[], [x, y]: GridPoint): boolean {
 }
 
 // How far the point is from the nearest edge of the shape, in grid units.
-function distanceTo(rings: Ring[], [x, y]: GridPoint): number {
+export function distanceTo(rings: Ring[], [x, y]: GridPoint): number {
   let best = Infinity
   for (const ring of rings) {
     for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
