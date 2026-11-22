@@ -12,7 +12,7 @@
 import { lonLatToGrid } from '../game/geo.ts'
 import { DECORATION_SIZE, LANDMARK_SIZE } from '../game/rules.ts'
 import type { MapView } from '../game/towns.ts'
-import { LANDMARKS, MOVING, NATURE } from '../map/decorations.ts'
+import { LANDMARKS, MOUNTAIN_ART, MOVING, NATURE } from '../map/decorations.ts'
 import type { Decoration } from '../map/decorations.ts'
 
 const INK = '#1e1b2e'
@@ -53,6 +53,16 @@ function Drawings() {
           <path d="M4 54 L24 18 L34 34 L42 24 L60 54 Z" fill="#9a7a66" />
           <path d="M24 18 L31 30 L27 28 L23 32 L19 27 Z" fill="#fff" />
           <path d="M42 24 L48 34 L44 33 L41 36 L37 32 Z" fill="#fff" />
+        </g>
+      </symbol>
+
+      <symbol id="deco-summit-flag" viewBox="0 0 64 64">
+        <g stroke={INK} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round">
+          <path d="M6 56 L32 14 L58 56 Z" fill="#8f7a8a" />
+          <path d="M32 14 L41 29 L36 27 L32 31 L27 27 L23 29 Z" fill="#fff" />
+          {/* A little flag on the summit: you made it up here together. */}
+          <path d="M32 14 V2" fill="none" />
+          <path d="M32 3 L44 6.5 L32 10 Z" fill="#f5a8cf" />
         </g>
       </symbol>
 
@@ -235,7 +245,9 @@ function Stamp({
   )
 }
 
-export function MapDecorations({ view }: { view: MapView }) {
+// `mountainArt` adds the mountain region art, unlocked by the
+// "3 mountain destinations" map milestone.
+export function MapDecorations({ view, mountainArt }: { view: MapView; mountainArt: boolean }) {
   const size = view.width * DECORATION_SIZE
   const landmarkSize = view.width * LANDMARK_SIZE
   return (
@@ -248,6 +260,10 @@ export function MapDecorations({ view }: { view: MapView }) {
       {NATURE.map((decoration, index) => (
         <Stamp key={`n${index}`} decoration={decoration} size={size} index={index} />
       ))}
+      {mountainArt &&
+        MOUNTAIN_ART.map((decoration, index) => (
+          <Stamp key={`a${index}`} decoration={decoration} size={size} index={index} />
+        ))}
       {LANDMARKS.map((decoration, index) => (
         <Stamp key={`l${index}`} decoration={decoration} size={landmarkSize} index={index} />
       ))}

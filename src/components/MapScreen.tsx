@@ -24,11 +24,17 @@ import {
   terrainName,
 } from '../game/geo.ts'
 import type { GridPoint, PlaceState, TerrainId } from '../game/geo.ts'
+import { mapMilestones, missingExplorerQuests } from '../game/mapMilestones.ts'
 import { iconForTerrain, MARKER_ICONS, markerIconOf } from '../game/markers.ts'
 import type { MarkerIconId } from '../game/markers.ts'
 import { canAddPin, pinsNewestFirst } from '../game/pins.ts'
 import type { PinInput, PinLook } from '../game/pins.ts'
-import { MAX_PIN_NAME_LENGTH, PIN_MARKER_SIZE, PLAYERS } from '../game/rules.ts'
+import {
+  MAX_PARTY_QUESTS,
+  MAX_PIN_NAME_LENGTH,
+  PIN_MARKER_SIZE,
+  PLAYERS,
+} from '../game/rules.ts'
 import { townLabelSize, townLabelsFor } from '../game/towns.ts'
 import type { MapView } from '../game/towns.ts'
 import { loadHeights } from '../map/heights.ts'
@@ -57,6 +63,7 @@ type Props = {
   onRemovePin: (pinId: string) => void
   onConfirmPin: (pinId: string) => void // a pin your partner dropped
   onDeclinePin: (pinId: string) => void
+  onAddExplorerQuests: () => void // unlocked by the "5 states" milestone
 }
 
 // The terrain picture lives in the public folder. BASE_URL is the app's
@@ -149,7 +156,10 @@ export function MapScreen({
   onRemovePin,
   onConfirmPin,
   onDeclinePin,
+  onAddExplorerQuests,
 }: Props) {
+  const milestones = mapMilestones(save)
+  const explorerQuestsLeft = missingExplorerQuests(save)
   // The other player's name, e.g. "Deepika" on Rachit's phone.
   const partnerName = PLAYERS.find((p) => p.id !== save.player)?.name ?? 'your partner'
   // The id of the state that is zoomed in on, or null for all of India.
@@ -488,7 +498,10 @@ export function MapScreen({
           <path d={INDIA_MAP.outline} className="map-outline" />
 
           {/* Trees, mountains, landmarks, clouds, waves, boats and birds. */}
-          <MapDecorations view={view} />
+          <MapDecorations
+            view={view}
+            mountainArt={milestones.some((m) => m.id === 'mountains' && m.done)}
+          />
 
           {/* The town names: a small dot with the name beside it. They are
               sized from the view, so they look the same at every zoom. */}
@@ -791,6 +804,62 @@ export function MapScreen({
           New pins wait for {partnerName} to confirm you went together. Send
           your share code from Camp to pass them on; photos stay on this
           phone. Removing a pin only removes it here.
+        </p>
+      </section>
+
+      {/* ----- Map milestones: rewards for exploring together ----- */}
+      <section className="panel" data-realm="together">
+        <h2>Map milestones</h2>
+        <ul className="milestone-list">
+          {milestones.map((milestone) => (
+            <li
+              key={milestone.id}
+              className={milestone.done ? 'map-milestone map-milestone-done' : 'map-milestone'}
+            >
+              <div className="map-milestone-top">
+                <span className="activity-what">{milestone.name}</span>
+                <span className="points-chip">
+                  {milestone.done ? 'Unlocked' : `${milestone.have} / ${milestone.need}`}
+                </span>
+              </div>
+              <div
+                className="bar"
+                role="progressbar"
+                aria-label={milestone.name}
+                aria-valuemin={0}
+                aria-valuemax={milestone.need}
+                aria-valuenow={milestone.have}
+              >
+                <div
+                  className="bar-fill"
+                  style={{ width: `${Math.round((milestone.have / milestone.need) * 100)}%` }}
+                />
+              </div>
+              <span className="activity-meta">{milestone.reward}</span>
+              {milestone.id === 'states' && milestone.done && explorerQuestsLeft.length > 0 && (
+                <button
+                  type="button"
+                  className="button button-strong"
+                  disabled={save.partyQuests.length >= MAX_PARTY_QUESTS}
+                  onClick={onAddExplorerQuests}
+                >
+                  Add explorer party quests
+                </button>
+              )}
+              {milestone.id === 'states' &&
+                milestone.done &&
+                explorerQuestsLeft.length > 0 &&
+                save.partyQuests.length >= MAX_PARTY_QUESTS && (
+                  <span className="challenge-hint">
+                    Your party quest list is full. Remove one on the Quests
+                    screen to make room.
+                  </span>
+                )}
+            </li>
+          ))}
+        </ul>
+        <p className="challenge-hint">
+          Only pins you have both confirmed count.
         </p>
       </section>
 

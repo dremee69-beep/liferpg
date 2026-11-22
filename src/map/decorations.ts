@@ -11,7 +11,7 @@
 // inside that state, every nature item lands in India, and every sea item
 // lands in the sea.
 
-export type NatureKind = 'tree' | 'pine' | 'palm' | 'peaks' | 'dunes'
+export type NatureKind = 'tree' | 'pine' | 'palm' | 'peaks' | 'dunes' | 'summit-flag'
 export type LandmarkKind =
   | 'taj-mahal'
   | 'india-gate'
@@ -62,6 +62,20 @@ export const NATURE: readonly (Decoration & { kind: NatureKind })[] = [
   { kind: 'dunes', lon: 72.5, lat: 28.2 }, // Bikaner
   { kind: 'dunes', lon: 71.5, lat: 25.6 }, // Barmer
   { kind: 'dunes', lon: 70.3, lat: 23.9 }, // Kutch
+]
+
+// MOUNTAIN REGION ART: extra peaks, pines and summit flags along the
+// Himalaya. They appear once you reach the "3 mountain destinations" map
+// milestone (see src/game/mapMilestones.ts).
+export const MOUNTAIN_ART: readonly (Decoration & { kind: NatureKind })[] = [
+  { kind: 'summit-flag', lon: 76.4, lat: 34.6 }, // Ladakh
+  { kind: 'peaks', lon: 78.6, lat: 33.0 }, // Ladakh, east
+  { kind: 'summit-flag', lon: 78.3, lat: 31.8 }, // Kinnaur, Himachal
+  { kind: 'pine', lon: 75.9, lat: 32.6 }, // Chamba, Himachal
+  { kind: 'summit-flag', lon: 80.0, lat: 30.3 }, // Kumaon, Uttarakhand
+  { kind: 'pine', lon: 88.3, lat: 27.2 }, // Sikkim
+  { kind: 'summit-flag', lon: 95.2, lat: 28.4 }, // Arunachal, east
+  { kind: 'pine', lon: 94.6, lat: 27.7 }, // Arunachal
 ]
 
 export const LANDMARKS: readonly (Decoration & { kind: LandmarkKind })[] = [

@@ -6,10 +6,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { lonLatToGrid, stateAt } from '../src/game/geo.ts'
-import { LANDMARKS, MOVING, NATURE } from '../src/map/decorations.ts'
+import { LANDMARKS, MOUNTAIN_ART, MOVING, NATURE } from '../src/map/decorations.ts'
 import { INDIA_MAP } from '../src/map/india.ts'
 
-const ALL = [...NATURE, ...LANDMARKS, ...MOVING]
+const ALL = [...NATURE, ...MOUNTAIN_ART, ...LANDMARKS, ...MOVING]
 
 test('every decoration is on the map', () => {
   for (const decoration of ALL) {
@@ -29,7 +29,7 @@ test('every landmark is inside its own state', () => {
 })
 
 test('trees, mountains, palms and dunes are inside India', () => {
-  for (const item of NATURE) {
+  for (const item of [...NATURE, ...MOUNTAIN_ART]) {
     const state = stateAt(lonLatToGrid(item.lon, item.lat))
     assert.notEqual(state, null, `${item.kind} at ${item.lon}, ${item.lat} is outside India`)
   }

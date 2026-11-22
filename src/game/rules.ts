@@ -63,6 +63,16 @@ export const PARTY_LOGS_IN_CODE = 20
 // A pin at or above this height is a "mountain destination".
 export const MOUNTAIN_METRES = 1500
 export const MAX_PINS = 200
+
+// MAP MILESTONES (see src/game/mapMilestones.ts).
+export const MOUNTAINS_FOR_UNLOCK = 3 // mountain destinations together
+export const STATES_FOR_UNLOCK = 5 // Indian states together
+// The party quests "5 Indian states" unlocks.
+export const EXPLORER_PARTY_QUESTS = [
+  'Try a local dish',
+  'Plan our next trip',
+  'Catch a sunrise or sunset',
+] as const
 export const MAX_PIN_NAME_LENGTH = 40
 // The most pins a share code carries (photos never travel). Only pins with
 // news for the partner go: yours waiting for them, and theirs you decided.

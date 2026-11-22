@@ -46,6 +46,7 @@ import {
   logPartyQuest,
   removePartyQuest,
 } from './game/party.ts'
+import { addExplorerQuests, newlyReached } from './game/mapMilestones.ts'
 import {
   addPin,
   confirmPin,
@@ -95,6 +96,7 @@ type CelebrationContent =
       milestoneName: string
       allDone: boolean // true when this was the epic's last milestone
     }
+  | { kind: 'map'; name: string; reward: string } // a map milestone reached
 // Once queued, each card also gets a number of its own.
 type Celebration = CelebrationContent & { id: number }
 
@@ -180,6 +182,13 @@ function App() {
       const levelAfter = levelForXp(settled.save.realmXp[done.realm])
       if (levelAfter > levelBefore) {
         cards.push({ kind: 'level', realm: done.realm, level: levelAfter })
+      }
+    }
+    // A map milestone reached (by confirming a pin, or by your partner's
+    // code confirming one of yours) gets a card too.
+    if (save !== null) {
+      for (const milestone of newlyReached(save, settled.save)) {
+        cards.push({ kind: 'map', name: milestone.name, reward: milestone.reward })
       }
     }
     if (cards.length > 0) buzz('levelUp')
@@ -470,6 +479,16 @@ function App() {
           onRemovePin={(pinId) => commitIfChanged(removePin(save, pinId))}
           onConfirmPin={(pinId) => commitIfChanged(confirmPin(save, pinId))}
           onDeclinePin={(pinId) => commitIfChanged(declinePin(save, pinId))}
+          onAddExplorerQuests={() => {
+            const next = addExplorerQuests(save, new Date())
+            if (next === save) return
+            commit(next)
+            setNotice({
+              id: Date.now(),
+              text: 'Explorer party quests added to your Quests screen.',
+              canUndo: false,
+            })
+          }}
         />
       )}
       {screen === 'camp' && (
@@ -527,6 +546,21 @@ function App() {
             {card.epicName}: <strong>{card.milestoneName}</strong>
           </span>
           <span className="celebration-chip">+{EPIC_MILESTONE_XP} XP</span>
+        </CelebrationCard>
+      )}
+
+      {card !== undefined && card.kind === 'map' && (
+        <CelebrationCard
+          key={card.id}
+          realm="together"
+          icon="map"
+          title="Map milestone!"
+          onClose={closeCelebration}
+        >
+          <span className="celebration-line">
+            <strong>{card.name}</strong>
+          </span>
+          <span className="celebration-chip">{card.reward}</span>
         </CelebrationCard>
       )}
 
