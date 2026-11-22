@@ -64,6 +64,12 @@ export const PARTY_LOGS_IN_CODE = 20
 export const MOUNTAIN_METRES = 1500
 export const MAX_PINS = 200
 export const MAX_PIN_NAME_LENGTH = 40
+// A pin's photo is shrunk to a square this many pixels wide (about 10 KB)
+// so 200 of them fit easily in the phone's save space.
+export const PIN_PHOTO_SIZE = 128
+// The most text a stored photo may take. A 128 x 128 JPEG is normally
+// 6,000 to 15,000 characters; anything far bigger is not one of ours.
+export const MAX_PIN_PHOTO_CHARS = 40000
 
 // TOWN LABELS on the map.
 // How tall the letters are, as a share of the map's width on screen
@@ -75,6 +81,8 @@ export const TOWN_LABEL_SIZE = 0.032
 // 0.08 is about 28 pixels on a phone, at every zoom.
 export const DECORATION_SIZE = 0.08
 export const LANDMARK_SIZE = 0.115
+// How wide a pin's marker is, the same way (0.1 is about 35 pixels).
+export const PIN_MARKER_SIZE = 0.1
 // Only this many of the most important towns on screen are considered.
 // It stops tiny places filling the gaps when the whole country is in view.
 export const TOWN_LABEL_CANDIDATES = 500

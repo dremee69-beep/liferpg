@@ -23,8 +23,9 @@ import {
   removePin,
   updatePin,
 } from '../src/game/pins.ts'
+import { iconForTerrain, isPinPhoto, markerIconOf } from '../src/game/markers.ts'
 import type { PinInput } from '../src/game/pins.ts'
-import { MAX_PINS } from '../src/game/rules.ts'
+import { MAX_PIN_PHOTO_CHARS, MAX_PINS } from '../src/game/rules.ts'
 import { INDIA_MAP } from '../src/map/india.ts'
 import { newSave, parseSave, saveToText, SAVE_VERSION } from '../src/storage/save.ts'
 
@@ -233,4 +234,88 @@ test('a damaged pin is dropped without losing the rest', () => {
   const damaged = JSON.parse(saveToText(save))
   damaged.pins.push({ id: 'broken', name: 'No position' })
   assert.equal(parseSave(JSON.stringify(damaged))?.pins.length, 1)
+})
+
+// ---------- Pin markers: icon or photo ----------
+
+// A stand-in for a small photo: the right kind of text, not a real picture.
+const PHOTO = 'data:image/jpeg;base64,' + 'A'.repeat(8000)
+
+test('a pin with no icon picked gets one from its terrain', () => {
+  assert.equal(iconForTerrain('mountains'), 'mountain')
+  assert.equal(iconForTerrain('highMountains'), 'mountain')
+  assert.equal(iconForTerrain('coast'), 'beach')
+  assert.equal(iconForTerrain('island'), 'beach')
+  assert.equal(iconForTerrain('plains'), 'city')
+  assert.equal(iconForTerrain('hills'), 'nature')
+
+  const save = addPin(newSave('rachit'), HILL_STATION, nov(16))
+  assert.equal(save.pins[0].icon, undefined)
+  assert.equal(markerIconOf(save.pins[0]), 'mountain')
+})
+
+test('a pin keeps the icon and photo picked for it', () => {
+  const save = addPin(
+    newSave('rachit'),
+    { ...HILL_STATION, icon: 'heart', photo: PHOTO },
+    nov(16),
+  )
+  assert.equal(save.pins[0].icon, 'heart')
+  assert.equal(save.pins[0].photo, PHOTO)
+  assert.equal(markerIconOf(save.pins[0]), 'heart')
+})
+
+test('a photo that is not a small JPEG is not kept', () => {
+  assert.equal(isPinPhoto(PHOTO), true)
+  assert.equal(isPinPhoto('data:image/png;base64,AAAA'), false)
+  assert.equal(isPinPhoto('data:image/jpeg;base64,' + 'A'.repeat(MAX_PIN_PHOTO_CHARS)), false)
+
+  const save = addPin(newSave('rachit'), { ...HILL_STATION, photo: 'not a photo' }, nov(16))
+  assert.equal(save.pins.length, 1) // the pin is still added...
+  assert.equal(save.pins[0].photo, undefined) // ...without the photo
+})
+
+test('editing a pin can change or remove its icon and photo', () => {
+  let save = addPin(newSave('rachit'), { ...HILL_STATION, photo: PHOTO }, nov(16))
+  const id = save.pins[0].id
+  const details = { name: 'Hill station', date: '2026-11-07', bucketList: false }
+
+  save = updatePin(save, id, { ...details, icon: 'star', photo: null }, nov(16))
+  assert.equal(save.pins[0].photo, undefined)
+  assert.equal(save.pins[0].icon, 'star')
+
+  save = updatePin(save, id, { ...details, icon: null, photo: null }, nov(16))
+  assert.equal(save.pins[0].icon, undefined)
+  assert.equal(markerIconOf(save.pins[0]), 'mountain') // back to the terrain icon
+
+  // Nothing changed: the very same save comes back.
+  assert.equal(updatePin(save, id, { ...details, icon: null, photo: null }, nov(16)), save)
+})
+
+test('icons and photos survive saving and loading; damaged ones are dropped', () => {
+  const save = addPin(
+    newSave('rachit'),
+    { ...HILL_STATION, icon: 'temple', photo: PHOTO },
+    nov(16),
+  )
+  const loaded = parseSave(saveToText(save))
+  assert.equal(loaded?.pins[0].icon, 'temple')
+  assert.equal(loaded?.pins[0].photo, PHOTO)
+
+  const damaged = JSON.parse(saveToText(save))
+  damaged.pins[0].icon = 'spaceship'
+  damaged.pins[0].photo = 12
+  const pin = parseSave(JSON.stringify(damaged))?.pins[0]
+  assert.equal(pin?.name, 'Hill station') // the pin is kept
+  assert.equal(pin?.icon, undefined)
+  assert.equal(pin?.photo, undefined)
+})
+
+test('a version 11 save keeps its pins, which get terrain icons', () => {
+  const old = JSON.parse(saveToText(addPin(newSave('deepika'), HILL_STATION, nov(16))))
+  old.version = 11
+  const upgraded = parseSave(JSON.stringify(old))
+  assert.equal(upgraded?.version, SAVE_VERSION)
+  assert.equal(upgraded?.pins.length, 1)
+  assert.equal(markerIconOf(upgraded!.pins[0]), 'mountain')
 })

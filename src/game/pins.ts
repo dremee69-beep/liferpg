@@ -11,6 +11,8 @@
 
 import { dayKey } from './dates.ts'
 import type { TerrainId } from './geo.ts'
+import { isMarkerIcon, isPinPhoto } from './markers.ts'
+import type { MarkerIconId } from './markers.ts'
 import { MAX_PIN_NAME_LENGTH, MAX_PINS } from './rules.ts'
 import type { Pin, SaveData } from '../storage/save.ts'
 
@@ -26,6 +28,23 @@ export type PinInput = {
   stateName: string
   metres: number
   terrain: TerrainId
+} & PinLook
+
+// How a pin looks on the map: an icon the player picked (null or left out =
+// pick one from the terrain), and a small photo (null or left out = none).
+// See markers.ts.
+export type PinLook = {
+  icon?: MarkerIconId | null
+  photo?: string | null
+}
+
+// The look as stored in a pin: only the parts that are set, and only if
+// they look right.
+function lookFields(look: PinLook): { icon?: MarkerIconId; photo?: string } {
+  return {
+    ...(isMarkerIcon(look.icon) ? { icon: look.icon } : {}),
+    ...(isPinPhoto(look.photo) ? { photo: look.photo } : {}),
+  }
 }
 
 // Tidies a typed place name. Returns null when nothing is left.
@@ -73,16 +92,17 @@ export function addPin(save: SaveData, input: PinInput, now: Date): SaveData {
     terrain: input.terrain,
     by: save.player,
     state: 'pending',
+    ...lookFields(input),
   }
   return { ...save, pins: [...save.pins, pin] }
 }
 
-// Change a pin's name, date or bucket-list tick. Where it is cannot be
-// changed: to move a pin, remove it and drop it again.
+// Change a pin's name, date, bucket-list tick, icon or photo. Where it is
+// cannot be changed: to move a pin, remove it and drop it again.
 export function updatePin(
   save: SaveData,
   pinId: string,
-  changes: { name: string; date: string; bucketList: boolean },
+  changes: { name: string; date: string; bucketList: boolean } & PinLook,
   now: Date,
 ): SaveData {
   const old = save.pins.find((pin) => pin.id === pinId)
@@ -90,14 +110,25 @@ export function updatePin(
   if (old === undefined || name === null || !isVisitDate(changes.date, now)) {
     return save
   }
+  const look = lookFields(changes)
   if (
     old.name === name &&
     old.date === changes.date &&
-    old.bucketList === changes.bucketList
+    old.bucketList === changes.bucketList &&
+    old.icon === look.icon &&
+    old.photo === look.photo
   ) {
     return save // nothing is different
   }
-  const updated: Pin = { ...old, name, date: changes.date, bucketList: changes.bucketList }
+  // Start from the pin without its old look, then add the new one.
+  const { icon: _oldIcon, photo: _oldPhoto, ...rest } = old
+  const updated: Pin = {
+    ...rest,
+    name,
+    date: changes.date,
+    bucketList: changes.bucketList,
+    ...look,
+  }
   return { ...save, pins: save.pins.map((pin) => (pin.id === pinId ? updated : pin)) }
 }
 

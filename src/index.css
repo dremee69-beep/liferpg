@@ -1270,6 +1270,61 @@ h3 {
   }
 }
 
+/* Pin markers never catch a tap: tapping one still reaches the map. */
+.map-pins {
+  pointer-events: none;
+}
+
+/* The pin form's "On the map" part: the marker as it will look, the photo
+   button, and the row of icons to pick from. */
+.marker-choice {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.marker-preview {
+  flex-shrink: 0;
+  display: block;
+}
+
+/* A <label> dressed as a button: centre its words like a real one. */
+.marker-photo-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.marker-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.marker-icon-button {
+  display: grid;
+  place-items: center;
+  min-width: 48px;
+  height: 48px;
+  padding: 0 6px;
+  border: var(--outline);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+/* The picked icon: sunny yellow with the hard sticker shadow. */
+.marker-icon-button[aria-pressed='true'] {
+  background: var(--sun);
+  box-shadow: var(--shadow-small);
+}
+
 /* A pin: a coloured dot with a dark edge. Both are "lines" of no length
    with thick round ends, so they stay the same size at every zoom. */
 .map-pin-edge,
@@ -1330,10 +1385,13 @@ h3 {
 }
 
 /* One pin in the list: its details, then its buttons underneath. */
+/* A pin in the list: its marker on the left, the details beside it, and
+   the buttons underneath. */
 .pin-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 8px 12px;
   padding: 10px 12px;
   border: var(--outline);
   border-radius: 14px;
@@ -1352,6 +1410,7 @@ h3 {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+  grid-column: 1 / -1; /* full width, under the marker and details */
 }
 
 .map-controls {

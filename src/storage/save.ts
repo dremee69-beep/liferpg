@@ -22,6 +22,8 @@ import {
 } from '../game/rules.ts'
 import { TERRAIN_TYPES } from '../game/geo.ts'
 import type { TerrainId } from '../game/geo.ts'
+import { isMarkerIcon, isPinPhoto } from '../game/markers.ts'
+import type { MarkerIconId } from '../game/markers.ts'
 import type { PlayerId, RealmId } from '../game/rules.ts'
 import { readPartnerSummary } from '../game/share.ts'
 import type { PartnerSummary } from '../game/share.ts'
@@ -40,7 +42,8 @@ import type { RealmXp } from '../game/xp.ts'
 //   Version 9: adds party quests.
 //   Version 10: Together becomes pair-only; its dailies become party quests.
 //   Version 11: adds map pins.
-export const SAVE_VERSION = 11
+//   Version 12: a pin may have its own icon or a small photo.
+export const SAVE_VERSION = 12
 
 // The names (keys) our data is filed under in the browser's notebook.
 const SAVE_KEY = 'liferpg-save'
@@ -85,6 +88,11 @@ export type Pin = {
   // 'pending' until the partner confirms it (confirming arrives in a later
   // update), then 'confirmed' or 'declined'.
   state: 'pending' | 'confirmed' | 'declined'
+  // How the pin looks on the map (see src/game/markers.ts). Both are
+  // optional: with neither, the icon is picked from the terrain. A photo,
+  // when there is one, is shown instead of the icon.
+  icon?: MarkerIconId
+  photo?: string // a small JPEG written out as text (a "data URL")
 }
 
 // One party quest on the player's list: something you do as a pair.
@@ -496,6 +504,12 @@ function migrate(data: Record<string, unknown>): Record<string, unknown> {
     upgraded = { ...upgraded, version: 11, pins: [] }
   }
 
+  // Version 11 -> 12: pins may now have an icon or photo. Existing pins
+  // have neither, so they keep the icon picked from their terrain.
+  if (upgraded.version === 11) {
+    upgraded = { ...upgraded, version: 12 }
+  }
+
   return upgraded
 }
 
@@ -536,6 +550,9 @@ export function readPins(value: unknown): Pin[] {
         terrain: item.terrain as TerrainId,
         by: item.by,
         state: item.state,
+        // A damaged icon or photo is dropped; the pin itself is kept.
+        ...(isMarkerIcon(item.icon) ? { icon: item.icon } : {}),
+        ...(isPinPhoto(item.photo) ? { photo: item.photo } : {}),
       })
     }
   }

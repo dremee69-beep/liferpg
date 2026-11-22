@@ -24,9 +24,11 @@ import {
   terrainName,
 } from '../game/geo.ts'
 import type { GridPoint, PlaceState, TerrainId } from '../game/geo.ts'
+import { iconForTerrain, MARKER_ICONS, markerIconOf } from '../game/markers.ts'
+import type { MarkerIconId } from '../game/markers.ts'
 import { canAddPin, pinsNewestFirst } from '../game/pins.ts'
-import type { PinInput } from '../game/pins.ts'
-import { MAX_PIN_NAME_LENGTH } from '../game/rules.ts'
+import type { PinInput, PinLook } from '../game/pins.ts'
+import { MAX_PIN_NAME_LENGTH, PIN_MARKER_SIZE } from '../game/rules.ts'
 import { townLabelSize, townLabelsFor } from '../game/towns.ts'
 import type { MapView } from '../game/towns.ts'
 import { loadHeights } from '../map/heights.ts'
@@ -36,6 +38,13 @@ import { INDIA_TOWNS } from '../map/towns.ts'
 import type { Pin, SaveData } from '../storage/save.ts'
 import { ConfirmButton } from './ConfirmButton.tsx'
 import { MapDecorations } from './MapDecorations.tsx'
+import {
+  MarkerIconDrawings,
+  MarkerIconPicture,
+  MarkerPreview,
+  PinMarker,
+} from './PinMarker.tsx'
+import { shrinkPhoto } from './shrinkPhoto.ts'
 
 type Props = {
   save: SaveData
@@ -43,7 +52,7 @@ type Props = {
   onAddPin: (input: PinInput) => void
   onUpdatePin: (
     pinId: string,
-    changes: { name: string; date: string; bucketList: boolean },
+    changes: { name: string; date: string; bucketList: boolean } & PinLook,
   ) => void
   onRemovePin: (pinId: string) => void
 }
@@ -141,6 +150,12 @@ export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Pro
   const [name, setName] = useState('')
   const [date, setDate] = useState(dayKey(now))
   const [bucketList, setBucketList] = useState(false)
+  // How the pin looks on the map: a picked icon (null = picked from the
+  // terrain) and a small photo (null = none).
+  const [icon, setIcon] = useState<MarkerIconId | null>(null)
+  const [photo, setPhoto] = useState<string | null>(null)
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const [photoError, setPhotoError] = useState<string | null>(null)
   // The height shown for the spot being pinned, as typed text. It starts as
   // what the map read, and the player can correct it.
   const [heightText, setHeightText] = useState('')
@@ -187,6 +202,9 @@ export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Pro
     setName('')
     setDate(today)
     setBucketList(false)
+    setIcon(null)
+    setPhoto(null)
+    setPhotoError(null)
     try {
       setHeights(await loadHeights())
       setCloseUp(null)
@@ -243,6 +261,8 @@ export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Pro
       stateName: spot.state.name,
       metres: spotMetres,
       terrain: spotTerrain,
+      icon,
+      photo,
     })
     // Stay zoomed where the new pin is, a little further out.
     setCloseUp({ centre: spot.point, width: SHOWING_WIDTH })
@@ -256,9 +276,26 @@ export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Pro
     setName(pin.name)
     setDate(pin.date)
     setBucketList(pin.bucketList)
+    setIcon(pin.icon ?? null)
+    setPhoto(pin.photo ?? null)
+    setPhotoError(null)
   }
 
-  const formIsValid = name.trim() !== '' && date !== '' && date <= today
+  // A photo was picked: shrink it to a small square for the marker.
+  async function handlePhotoPicked(file: File | undefined) {
+    if (file === undefined) return
+    setPhotoBusy(true)
+    setPhotoError(null)
+    const small = await shrinkPhoto(file)
+    setPhotoBusy(false)
+    if (small === null) {
+      setPhotoError('That photo could not be used. Try another one.')
+    } else {
+      setPhoto(small)
+    }
+  }
+
+  const formIsValid = name.trim() !== '' && date !== '' && date <= today && !photoBusy
 
   // The height for the spot being pinned: what was typed, if it is a
   // sensible number; otherwise what the map read.
@@ -274,8 +311,9 @@ export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Pro
       ? 'plains'
       : terrainFor({ metres: spotMetres, nearSea: spot.nearSea, stateId: spot.state.id })
 
-  // The three fields shared by "new pin" and "edit pin".
-  const pinFields = (
+  // The fields shared by "new pin" and "edit pin". `terrain` is the pin's
+  // terrain, used for the icon picked when the player picks none.
+  const pinFields = (terrain: TerrainId) => (
     <>
       <label className="field">
         <span className="field-label">Name of the place</span>
@@ -306,6 +344,78 @@ export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Pro
         />
         It was on our bucket list
       </label>
+
+      {/* How the pin looks on the map: a photo, or an icon. */}
+      <div className="field">
+        <span className="field-label">On the map</span>
+        <div className="marker-choice">
+          <MarkerPreview
+            icon={icon ?? iconForTerrain(terrain)}
+            photo={photo}
+            bucketList={bucketList}
+            size={52}
+          />
+          {photo !== null ? (
+            <button
+              type="button"
+              className="button"
+              onClick={() => setPhoto(null)}
+            >
+              Remove photo
+            </button>
+          ) : (
+            // A <label> round a hidden file box: tapping the button opens
+            // the phone's camera or photo gallery.
+            <label className="button marker-photo-button">
+              {photoBusy ? 'Shrinking…' : 'Add photo'}
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                disabled={photoBusy}
+                onChange={(event) => {
+                  void handlePhotoPicked(event.target.files?.[0])
+                  event.target.value = '' // so the same photo can be picked again
+                }}
+              />
+            </label>
+          )}
+        </div>
+        {photoError !== null && (
+          <p className="import-error" role="status">
+            {photoError}
+          </p>
+        )}
+        {photo === null && (
+          <div className="marker-icons" role="group" aria-label="Pick an icon">
+            <button
+              type="button"
+              className="marker-icon-button marker-icon-auto"
+              aria-pressed={icon === null}
+              onClick={() => setIcon(null)}
+            >
+              Auto
+            </button>
+            {MARKER_ICONS.map((choice) => (
+              <button
+                key={choice.id}
+                type="button"
+                className="marker-icon-button"
+                aria-pressed={icon === choice.id}
+                aria-label={choice.name}
+                onClick={() => setIcon(choice.id)}
+              >
+                <MarkerIconPicture icon={choice.id} />
+              </button>
+            ))}
+          </div>
+        )}
+        <span className="challenge-hint">
+          {photo !== null
+            ? 'Only a small copy of the photo is kept, on this phone. It is never put in share codes.'
+            : 'Auto picks an icon from the terrain.'}
+        </span>
+      </div>
     </>
   )
 
@@ -379,19 +489,28 @@ export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Pro
             ))}
           </g>
 
-          {/* The pins. Each is a "line" of no length with a thick round
-              end, which the browser draws as a dot that stays the same size
-              however far the map is zoomed. Two dots make an outlined one. */}
-          {save.pins.map((pin) => {
-            const [x, y] = lonLatToGrid(pin.lon, pin.lat)
-            const dot = `M${x} ${y}h0.01`
-            return (
-              <g key={pin.id}>
-                <path d={dot} className="map-pin-edge" />
-                <path d={dot} className="map-pin" />
-              </g>
-            )
-          })}
+          {/* The pins: round sticker markers with a photo or an icon, the
+              same size on screen at every zoom. Northern pins are drawn
+              first, so a marker further south sits in front, as it is
+              "nearer" on the map. */}
+          <g className="map-pins">
+            <MarkerIconDrawings />
+            {[...save.pins]
+              .sort((a, b) => b.lat - a.lat)
+              .map((pin) => {
+                const [x, y] = lonLatToGrid(pin.lon, pin.lat)
+                return (
+                  <PinMarker
+                    key={pin.id}
+                    pin={pin}
+                    mine={pin.by === save.player}
+                    x={x}
+                    y={y}
+                    size={view.width * PIN_MARKER_SIZE}
+                  />
+                )
+              })}
+          </g>
 
           {/* The spot being pinned right now. */}
           {spot !== null && (
@@ -481,7 +600,7 @@ export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Pro
                 <span className="points-chip">Mountain destination</span>
               )}
             </p>
-            {pinFields}
+            {pinFields(spotTerrain)}
             <label className="field">
               <span className="field-label">Height in metres</span>
               <input
@@ -540,11 +659,11 @@ export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Pro
                     onSubmit={(event) => {
                       event.preventDefault()
                       if (!formIsValid) return
-                      onUpdatePin(pin.id, { name, date, bucketList })
+                      onUpdatePin(pin.id, { name, date, bucketList, icon, photo })
                       setEditingId(null)
                     }}
                   >
-                    {pinFields}
+                    {pinFields(pin.terrain)}
                     <div className="button-row">
                       <button
                         type="button"
@@ -565,6 +684,11 @@ export function MapScreen({ save, now, onAddPin, onUpdatePin, onRemovePin }: Pro
                 </li>
               ) : (
                 <li key={pin.id} className="pin-item">
+                  <MarkerPreview
+                    icon={markerIconOf(pin)}
+                    photo={pin.photo ?? null}
+                    bucketList={pin.bucketList}
+                  />
                   <div className="activity-text">
                     <span className="activity-what">{pin.name}</span>
                     <span className="activity-meta">
